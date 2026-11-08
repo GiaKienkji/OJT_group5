@@ -1,0 +1,6 @@
+@SOMS.Api_HostAddress = http://localhost:5062
+
+GET {{SOMS.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

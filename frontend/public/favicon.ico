@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Rounded Squircle Background with Gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B4F8A"/>
+      <stop offset="100%" stop-color="#05294A"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="64" height="64" rx="16" fill="url(#bgGrad)"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="14.5" stroke="#38BDF8" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Open Book Base -->
+  <path d="M16 46C20 44 26 44 32 46.5C38 44 44 44 48 46V36C44 34 38 34 32 36.5C26 34 20 34 16 36V46Z" fill="#FFFFFF" fill-opacity="0.95"/>
+  <path d="M32 36.5V46.5" stroke="#0B4F8A" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Graduation Cap -->
+  <polygon points="32,15 50,23 32,31 14,23" fill="#FFFFFF"/>
+  <polygon points="32,15 50,23 32,31 14,23" stroke="#FCD34D" stroke-width="1.5" stroke-linejoin="round"/>
+  
+  <!-- Cap Lower Skullcap -->
+  <path d="M21 26.5V33C21 37 26 39.5 32 39.5C38 39.5 43 37 43 33V26.5" fill="#FFFFFF" fill-opacity="0.9"/>
+  
+  <!-- Tassel -->
+  <path d="M47 23.5V34" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="47" cy="34" r="2" fill="#F59E0B"/>
+</svg>

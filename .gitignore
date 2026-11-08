@@ -1,0 +1,36 @@
+## .gitignore for SOMS
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.idea/
+.vscode/
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+secrets.json
+appsettings.*.local.json
+
+# Build outputs
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]uild/
+[Bb]in/
+[Oo]bj/
+*.log
+build.log
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.npm/
+.eslintcache
