@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using SOMS.Api.Authorization;
 using SOMS.Infrastructure;
+using SOMS.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,6 +114,22 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Seed initial system data (Roles, Permissions, Academic Year, Sample Approvals, Tasks)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var context = services.GetRequiredService<SomsDbContext>();
+        await DbInitializer.SeedAsync(context, logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "DbInitializer bypassed or skipped during startup.");
+    }
+}
 
 app.Run();
 

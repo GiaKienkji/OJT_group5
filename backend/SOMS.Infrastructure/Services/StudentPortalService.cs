@@ -1757,6 +1757,7 @@ public class StudentPortalService : IStudentPortalService
 
     public async Task<List<AnnouncementItemDto>> GetAnnouncementsAsync(Guid userId, CancellationToken ct = default)
     {
+        await Task.CompletedTask;
         var list = new List<AnnouncementItemDto>
         {
             // 1. Lịch kiểm tra giữa kỳ I đã được cập nhật
