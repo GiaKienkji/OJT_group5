@@ -3,9 +3,10 @@ import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { StudentRoutes } from './features/student/routes/studentRoutes';
+import { AdminRoutes } from './features/admin/routes/adminRoutes';
+import { ManagementRoutes } from './features/management/routes/managementRoutes';
 import { 
   Users, 
-  Settings, 
   FileText, 
   CheckCircle, 
   Calendar, 
@@ -14,8 +15,7 @@ import {
   GraduationCap, 
   Award,
   BookOpen,
-  Clock,
-  ShieldCheck
+  Clock
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -52,75 +52,10 @@ export const App: React.FC = () => {
   // Render the appropriate dashboard based on currentDashboard route
   switch (currentDashboard) {
     case '/admin/dashboard':
-      return (
-        <DashboardLayout
-          roleCode="system_admin"
-          roleName="Quản trị hệ thống"
-          title="Bảng điều khiển Quản trị viên"
-          description="Quản lý tài khoản, phân quyền vai trò 9 nhóm người dùng, cấu hình bảo mật và giám sát hệ thống."
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-3 mb-4 text-[#0B4F8A]">
-                <Users className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-slate-900">Quản lý Người dùng</h3>
-              </div>
-              <p className="text-sm text-slate-500 mb-4">Quản lý danh sách tài khoản, kích hoạt, khóa hoặc cấp lại mật khẩu.</p>
-              <span className="inline-block px-3 py-1 bg-blue-50 text-[#0B4F8A] text-xs font-semibold rounded-lg">9 vai trò lõi</span>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-3 mb-4 text-emerald-600">
-                <Settings className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-slate-900">Phân quyền RBAC</h3>
-              </div>
-              <p className="text-sm text-slate-500 mb-4">Ánh xạ danh mục quyền chi tiết và giám sát chính sách truy cập.</p>
-              <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg">56 Permissions</span>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-3 mb-4 text-purple-600">
-                <ShieldCheck className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-slate-900">Nhật ký Kiểm toán</h3>
-              </div>
-              <p className="text-sm text-slate-500 mb-4">Theo dõi toàn bộ lịch sử thay đổi dữ liệu nhạy cảm và bảo mật.</p>
-              <span className="inline-block px-3 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded-lg">Audit Logs</span>
-            </div>
-          </div>
-        </DashboardLayout>
-      );
+      return <AdminRoutes />;
 
     case '/management/dashboard':
-      return (
-        <DashboardLayout
-          roleCode="school_management"
-          roleName="Ban giám hiệu"
-          title="Bảng điều hành Ban giám hiệu"
-          description="Giám sát toàn diện vận hành trường học, phê duyệt thời khóa biểu, lịch giảng dạy và báo cáo thống kê."
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-3 mb-3 text-blue-600">
-                <CheckCircle className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-slate-900">Phê duyệt Điều hành</h3>
-              </div>
-              <p className="text-sm text-slate-500">Duyệt thời khóa biểu, lịch thi và các đề xuất chuyên môn theo thẩm quyền.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-3 mb-3 text-teal-600">
-                <Calendar className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-slate-900">Chuyên môn &amp; Giảng dạy</h3>
-              </div>
-              <p className="text-sm text-slate-500">Theo dõi tiến độ chương trình đào tạo và phân công chuyên môn nhà trường.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex items-center gap-3 mb-3 text-amber-600">
-                <FileText className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-slate-900">Báo cáo Toàn trường</h3>
-              </div>
-              <p className="text-sm text-slate-500">Tổng hợp sĩ số, chuyên cần, chất lượng học tập và tài chính tổng quát.</p>
-            </div>
-          </div>
-        </DashboardLayout>
-      );
+      return <ManagementRoutes />;
 
     case '/academic/dashboard':
       return (

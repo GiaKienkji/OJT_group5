@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SOMS.Application.Common.Interfaces;
+using SOMS.Application.Modules.Admin.Interfaces;
+using SOMS.Application.Modules.Management.Interfaces;
 using SOMS.Application.Modules.StudentPortal.Interfaces;
 using SOMS.Infrastructure.Authorization;
 using SOMS.Infrastructure.Data;
@@ -43,6 +45,17 @@ public static class DependencyInjection
         services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IStudentPortalService, StudentPortalService>();
+
+        // Register Admin Services (TV1)
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IRolePermissionService, RolePermissionService>();
+        services.AddScoped<ISystemConfigService, SystemConfigService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+
+        // Register School Management & Approval Engine Services (TV1)
+        services.AddScoped<IApprovalEngineService, ApprovalEngineService>();
+        services.AddScoped<ITaskManagementService, TaskManagementService>();
+        services.AddScoped<ISchoolManagementService, SchoolManagementService>();
 
         // Register Permission Authorization Handler
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();

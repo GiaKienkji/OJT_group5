@@ -62,6 +62,7 @@ builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProv
 // Configure Swagger with JWT Bearer authentication support
 builder.Services.AddSwaggerGen(c =>
 {
+    c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "SOMS Web API (School Operations Management System)",
