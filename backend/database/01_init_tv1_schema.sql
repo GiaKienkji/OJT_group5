@@ -168,3 +168,4 @@ CREATE INDEX IF NOT EXISTS idx_approval_requests_requester ON public.approval_re
 CREATE INDEX IF NOT EXISTS idx_school_tasks_school_status ON public.school_tasks(school_id, status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs(created_at DESC);
+
