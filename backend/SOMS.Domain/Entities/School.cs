@@ -9,6 +9,7 @@ public class School
     public string? Email { get; set; }
     public string? Phone { get; set; }
     public string? Address { get; set; }
+    public string Timezone { get; set; } = "Asia/Ho_Chi_Minh";
     public string Status { get; set; } = "active";
 
     public ICollection<SchoolMembership> Memberships { get; set; } = new List<SchoolMembership>();

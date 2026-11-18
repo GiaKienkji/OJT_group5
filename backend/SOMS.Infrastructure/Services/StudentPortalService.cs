@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SOMS.Application.Modules.Academic;
 using SOMS.Application.Modules.StudentPortal.DTOs;
 using SOMS.Application.Modules.StudentPortal.Interfaces;
 using SOMS.Infrastructure.Data;
@@ -11,6 +12,8 @@ public class StudentPortalService : IStudentPortalService
 {
     private readonly SomsDbContext _dbContext;
     private readonly ILogger<StudentPortalService> _logger;
+    private readonly AcademicScheduleStore _schedule;
+    private readonly TimeProvider _clock;
     private static bool _dataEnsured = false;
     private static readonly object _syncLock = new();
     private static readonly List<SupportRequestDto> _mockSupportRequests = new()
@@ -97,8 +100,11 @@ public class StudentPortalService : IStudentPortalService
         }
     };
 
-    public StudentPortalService(SomsDbContext dbContext, ILogger<StudentPortalService> logger)
+    public StudentPortalService(SomsDbContext dbContext, ILogger<StudentPortalService> logger,
+        AcademicScheduleStore schedule, TimeProvider clock)
     {
+        _schedule = schedule;
+        _clock = clock;
         _dbContext = dbContext;
         _logger = logger;
     }
@@ -559,11 +565,9 @@ public class StudentPortalService : IStudentPortalService
             profile.HomeroomTeacher = "Cô Phạm Minh Thư";
         }
 
-        // Tính toán thứ hiện tại của tuần: Thứ Hai (2) đến Thứ Bảy (7)
-        int currentDayOfWeek = (int)DateTime.Today.DayOfWeek;
-        int targetWeekday = currentDayOfWeek == 0 ? 2 : (currentDayOfWeek == 6 ? 6 : currentDayOfWeek + 1);
-
-        var todayTimetable = await GetTimetableAsync(userId, targetWeekday, "morning", ct);
+        var school = await _schedule.StudentSchool(userId, _clock.GetUtcNow(), ct);
+        var todayTimetable = school == null ? [] : (await _schedule.ForStudent(userId, school.Id, school.Today, school.Today, false, ct))
+            .Select(AsTimetableItem).ToList();
         var exams = await GetExamsAsync(userId, ct);
         var announcements = await GetAnnouncementsAsync(userId, ct);
         var attendance = await GetAttendanceAsync(userId, null, null, null, ct);
@@ -573,7 +577,7 @@ public class StudentPortalService : IStudentPortalService
         return new StudentDashboardDto
         {
             Profile = profile,
-            TodayLessonsCount = todayTimetable.Count > 0 ? todayTimetable.Count : 5,
+            TodayLessonsCount = todayTimetable.Count,
             AttendanceRate = attendance.AttendanceRate,
             UpcomingExamsCount = exams.Count,
             UnreadAnnouncementsCount = announcements.Count(a => !a.IsRead) > 0 ? announcements.Count(a => !a.IsRead) : 3,
@@ -603,127 +607,55 @@ public class StudentPortalService : IStudentPortalService
         };
     }
 
-    public Task<List<TimetableItemDto>> GetTimetableAsync(Guid userId, int? weekday = null, string? session = null, CancellationToken ct = default)
+    public async Task<List<TimetableItemDto>> GetTimetableAsync(Guid userId, int? weekday = null, string? session = null,
+        CancellationToken ct = default)
     {
-        // Thời khóa biểu chuẩn đầy đủ 50 tiết (Sáng 25 tiết + Chiều 25 tiết)
-        var weeklyTimetable = new List<TimetableItemDto>
-        {
-            // ================= BUỔI SÁNG (Morning) =================
-            // Thứ 2 (13/01) - Sáng
-            new() { Weekday = 2, PeriodNo = 1, PeriodName = "Tiết 1", StartTime = "07:00", EndTime = "07:45", SubjectName = "Toán", SubjectCode = "TOAN", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 2, PeriodNo = 2, PeriodName = "Tiết 2", StartTime = "07:50", EndTime = "08:35", SubjectName = "Ngữ văn", SubjectCode = "VAN", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 2, PeriodNo = 3, PeriodName = "Tiết 3", StartTime = "08:45", EndTime = "09:30", SubjectName = "Tiếng Anh", SubjectCode = "ANH", TeacherName = "Cô Phạm Minh Thư", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 2, PeriodNo = 4, PeriodName = "Tiết 4", StartTime = "09:35", EndTime = "10:20", SubjectName = "Lịch sử", SubjectCode = "SU", TeacherName = "Cô Phan Hoàng Oanh", RoomName = "B201", Session = "morning" },
-            new() { Weekday = 2, PeriodNo = 5, PeriodName = "Tiết 5", StartTime = "10:30", EndTime = "11:15", SubjectName = "Tin học", SubjectCode = "TIN", TeacherName = "Cô Đặng Thu Trang", RoomName = "B201", Session = "morning" },
-
-            // Thứ 3 (14/01) - Sáng (HÔM NAY)
-            new() { Weekday = 3, PeriodNo = 1, PeriodName = "Tiết 1", StartTime = "07:00", EndTime = "07:45", SubjectName = "Ngữ văn", SubjectCode = "VAN", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 3, PeriodNo = 2, PeriodName = "Tiết 2", StartTime = "07:50", EndTime = "08:35", SubjectName = "Toán", SubjectCode = "TOAN", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 3, PeriodNo = 3, PeriodName = "Tiết 3", StartTime = "08:45", EndTime = "09:30", SubjectName = "Vật lý", SubjectCode = "LY", TeacherName = "Thầy Nguyễn Văn An", RoomName = "B101", Session = "morning" },
-            new() { Weekday = 3, PeriodNo = 4, PeriodName = "Tiết 4", StartTime = "09:35", EndTime = "10:20", SubjectName = "Địa lý", SubjectCode = "DIA", TeacherName = "Cô Đặng Thu Trang", RoomName = "B201", Session = "morning" },
-            new() { Weekday = 3, PeriodNo = 5, PeriodName = "Tiết 5", StartTime = "10:30", EndTime = "11:15", SubjectName = "Ngữ văn", SubjectCode = "VAN", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "morning" },
-
-            // Thứ 4 (15/01) - Sáng
-            new() { Weekday = 4, PeriodNo = 1, PeriodName = "Tiết 1", StartTime = "07:00", EndTime = "07:45", SubjectName = "Tiếng Anh", SubjectCode = "ANH", TeacherName = "Cô Phạm Minh Thư", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 4, PeriodNo = 2, PeriodName = "Tiết 2", StartTime = "07:50", EndTime = "08:35", SubjectName = "Hóa học", SubjectCode = "HOA", TeacherName = "Cô Nguyễn Thanh Tâm", RoomName = "B101", IsSubstitute = true, SubstituteTeacherName = "Thầy Phạm Minh Đức", Session = "morning" },
-            new() { Weekday = 4, PeriodNo = 3, PeriodName = "Tiết 3", StartTime = "08:45", EndTime = "09:30", SubjectName = "Toán", SubjectCode = "TOAN", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 4, PeriodNo = 4, PeriodName = "Tiết 4", StartTime = "09:35", EndTime = "10:20", SubjectName = "Toán", SubjectCode = "TOAN", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 4, PeriodNo = 5, PeriodName = "Tiết 5", StartTime = "10:30", EndTime = "11:15", SubjectName = "Sinh học", SubjectCode = "SINH", TeacherName = "Thầy Bùi Minh Đức", RoomName = "B201", Session = "morning" },
-
-            // Thứ 5 (16/01) - Sáng
-            new() { Weekday = 5, PeriodNo = 1, PeriodName = "Tiết 1", StartTime = "07:00", EndTime = "07:45", SubjectName = "Vật lý", SubjectCode = "LY", TeacherName = "Thầy Nguyễn Văn An", RoomName = "B101", Session = "morning" },
-            new() { Weekday = 5, PeriodNo = 2, PeriodName = "Tiết 2", StartTime = "07:50", EndTime = "08:35", SubjectName = "Sinh học", SubjectCode = "SINH", TeacherName = "Thầy Bùi Minh Đức", RoomName = "B201", Session = "morning" },
-            new() { Weekday = 5, PeriodNo = 3, PeriodName = "Tiết 3", StartTime = "08:45", EndTime = "09:30", SubjectName = "Ngữ văn", SubjectCode = "VAN", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 5, PeriodNo = 4, PeriodName = "Tiết 4", StartTime = "09:35", EndTime = "10:20", SubjectName = "Hóa học", SubjectCode = "HOA", TeacherName = "Cô Nguyễn Thanh Tâm", RoomName = "B101", Note = "Chuyển từ A203 sang B101", Session = "morning" },
-            new() { Weekday = 5, PeriodNo = 5, PeriodName = "Tiết 5", StartTime = "10:30", EndTime = "11:15", SubjectName = "Tiếng Anh", SubjectCode = "ANH", TeacherName = "Cô Phạm Minh Thư", RoomName = "A203", Session = "morning" },
-
-            // Thứ 6 (17/01) - Sáng
-            new() { Weekday = 6, PeriodNo = 1, PeriodName = "Tiết 1", StartTime = "07:00", EndTime = "07:45", SubjectName = "Toán", SubjectCode = "TOAN", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 6, PeriodNo = 2, PeriodName = "Tiết 2", StartTime = "07:50", EndTime = "08:35", SubjectName = "Tiếng Anh", SubjectCode = "ANH", TeacherName = "Cô Phạm Minh Thư", RoomName = "A203", Session = "morning" },
-            new() { Weekday = 6, PeriodNo = 3, PeriodName = "Tiết 3", StartTime = "08:45", EndTime = "09:30", SubjectName = "Tin học", SubjectCode = "TIN", TeacherName = "Cô Đặng Thu Trang", RoomName = "B201", Session = "morning" },
-            new() { Weekday = 6, PeriodNo = 4, PeriodName = "Tiết 4", StartTime = "09:35", EndTime = "10:20", SubjectName = "GDTC", SubjectCode = "GDTC", TeacherName = "Thầy Mai Văn Trọng", RoomName = "Nhà đa năng", Session = "morning" },
-            new() { Weekday = 6, PeriodNo = 5, PeriodName = "Tiết 5", StartTime = "10:30", EndTime = "11:15", SubjectName = "Sinh hoạt lớp", SubjectCode = "SHL", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "morning" },
-
-            // ================= BUỔI CHIỀU (Afternoon) =================
-            // Thứ 2 (13/01) - Chiều
-            new() { Weekday = 2, PeriodNo = 1, PeriodName = "Tiết 1 (Chiều)", StartTime = "13:30", EndTime = "14:15", SubjectName = "Bồi dưỡng Toán", SubjectCode = "TOAN_BD", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "afternoon" },
-            new() { Weekday = 2, PeriodNo = 2, PeriodName = "Tiết 2 (Chiều)", StartTime = "14:20", EndTime = "15:05", SubjectName = "Bồi dưỡng Toán", SubjectCode = "TOAN_BD", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "afternoon" },
-            new() { Weekday = 2, PeriodNo = 3, PeriodName = "Tiết 3 (Chiều)", StartTime = "15:15", EndTime = "16:00", SubjectName = "Tiếng Anh tăng cường", SubjectCode = "ANH_TC", TeacherName = "Cô Phạm Minh Thư", RoomName = "Phòng Lab 1", Session = "afternoon" },
-            new() { Weekday = 2, PeriodNo = 4, PeriodName = "Tiết 4 (Chiều)", StartTime = "16:05", EndTime = "16:50", SubjectName = "Hoạt động TN-HN", SubjectCode = "TNHN", TeacherName = "Cô Lê Thị Mai", RoomName = "Hội trường", Session = "afternoon" },
-            new() { Weekday = 2, PeriodNo = 5, PeriodName = "Tiết 5 (Chiều)", StartTime = "16:55", EndTime = "17:40", SubjectName = "Tự học có hướng dẫn", SubjectCode = "TUHOC", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "afternoon" },
-
-            // Thứ 3 (14/01) - Chiều (HÔM NAY)
-            new() { Weekday = 3, PeriodNo = 1, PeriodName = "Tiết 1 (Chiều)", StartTime = "13:30", EndTime = "14:15", SubjectName = "Ôn tập Vật lý", SubjectCode = "LY_ON", TeacherName = "Thầy Nguyễn Văn An", RoomName = "B101", Session = "afternoon" },
-            new() { Weekday = 3, PeriodNo = 2, PeriodName = "Tiết 2 (Chiều)", StartTime = "14:20", EndTime = "15:05", SubjectName = "Ôn tập Hóa học", SubjectCode = "HOA_ON", TeacherName = "Cô Nguyễn Thanh Tâm", RoomName = "B101", Session = "afternoon" },
-            new() { Weekday = 3, PeriodNo = 3, PeriodName = "Tiết 3 (Chiều)", StartTime = "15:15", EndTime = "16:00", SubjectName = "CLB Thể thao", SubjectCode = "CLB_TT", TeacherName = "Thầy Mai Văn Trọng", RoomName = "Sân bóng rổ", Session = "afternoon" },
-            new() { Weekday = 3, PeriodNo = 4, PeriodName = "Tiết 4 (Chiều)", StartTime = "16:05", EndTime = "16:50", SubjectName = "CLB Tin học - STEM", SubjectCode = "CLB_STEM", TeacherName = "Cô Đặng Thu Trang", RoomName = "Phòng Lab Tin 2", Session = "afternoon" },
-            new() { Weekday = 3, PeriodNo = 5, PeriodName = "Tiết 5 (Chiều)", StartTime = "16:55", EndTime = "17:40", SubjectName = "Sinh hoạt chuyên đề", SubjectCode = "SHCD", TeacherName = "Cô Phạm Minh Thư", RoomName = "A203", Session = "afternoon" },
-
-            // Thứ 4 (15/01) - Chiều
-            new() { Weekday = 4, PeriodNo = 1, PeriodName = "Tiết 1 (Chiều)", StartTime = "13:30", EndTime = "14:15", SubjectName = "Chuyên đề Ngữ văn", SubjectCode = "VAN_CD", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "afternoon" },
-            new() { Weekday = 4, PeriodNo = 2, PeriodName = "Tiết 2 (Chiều)", StartTime = "14:20", EndTime = "15:05", SubjectName = "Chuyên đề Ngữ văn", SubjectCode = "VAN_CD", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "afternoon" },
-            new() { Weekday = 4, PeriodNo = 3, PeriodName = "Tiết 3 (Chiều)", StartTime = "15:15", EndTime = "16:00", SubjectName = "Tiếng Anh giao tiếp", SubjectCode = "ANH_GT", TeacherName = "Thầy John Miller", RoomName = "Phòng Lab 1", Session = "afternoon" },
-            new() { Weekday = 4, PeriodNo = 4, PeriodName = "Tiết 4 (Chiều)", StartTime = "16:05", EndTime = "16:50", SubjectName = "Kỹ năng mềm", SubjectCode = "KNM", TeacherName = "Thầy Bùi Minh Đức", RoomName = "B201", Session = "afternoon" },
-            new() { Weekday = 4, PeriodNo = 5, PeriodName = "Tiết 5 (Chiều)", StartTime = "16:55", EndTime = "17:40", SubjectName = "Tự chọn nâng cao", SubjectCode = "TCNC", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "afternoon" },
-
-            // Thứ 5 (16/01) - Chiều
-            new() { Weekday = 5, PeriodNo = 1, PeriodName = "Tiết 1 (Chiều)", StartTime = "13:30", EndTime = "14:15", SubjectName = "Thực hành Hóa học", SubjectCode = "HOA_TH", TeacherName = "Cô Nguyễn Thanh Tâm", RoomName = "Phòng TN Hóa", Session = "afternoon" },
-            new() { Weekday = 5, PeriodNo = 2, PeriodName = "Tiết 2 (Chiều)", StartTime = "14:20", EndTime = "15:05", SubjectName = "Thực hành Sinh học", SubjectCode = "SINH_TH", TeacherName = "Thầy Bùi Minh Đức", RoomName = "Phòng TN Sinh", Session = "afternoon" },
-            new() { Weekday = 5, PeriodNo = 3, PeriodName = "Tiết 3 (Chiều)", StartTime = "15:15", EndTime = "16:00", SubjectName = "Bồi dưỡng Lịch sử", SubjectCode = "SU_BD", TeacherName = "Cô Phan Hoàng Oanh", RoomName = "B201", Session = "afternoon" },
-            new() { Weekday = 5, PeriodNo = 4, PeriodName = "Tiết 4 (Chiều)", StartTime = "16:05", EndTime = "16:50", SubjectName = "CLB Nghệ thuật", SubjectCode = "CLB_NT", TeacherName = "Cô Hoàng Yến", RoomName = "Phòng Âm nhạc", Session = "afternoon" },
-            new() { Weekday = 5, PeriodNo = 5, PeriodName = "Tiết 5 (Chiều)", StartTime = "16:55", EndTime = "17:40", SubjectName = "Đọc sách nghiên cứu", SubjectCode = "DOCSACH", TeacherName = "Cô Nguyễn Thị Lan", RoomName = "Thư viện", Session = "afternoon" },
-
-            // Thứ 6 (17/01) - Chiều
-            new() { Weekday = 6, PeriodNo = 1, PeriodName = "Tiết 1 (Chiều)", StartTime = "13:30", EndTime = "14:15", SubjectName = "Bồi dưỡng Toán", SubjectCode = "TOAN_BD", TeacherName = "Thầy Trần Quốc Huy", RoomName = "A203", Session = "afternoon" },
-            new() { Weekday = 6, PeriodNo = 2, PeriodName = "Tiết 2 (Chiều)", StartTime = "14:20", EndTime = "15:05", SubjectName = "Tiếng Anh IELTS", SubjectCode = "ANH_IELTS", TeacherName = "Cô Phạm Minh Thư", RoomName = "A203", Session = "afternoon" },
-            new() { Weekday = 6, PeriodNo = 3, PeriodName = "Tiết 3 (Chiều)", StartTime = "15:15", EndTime = "16:00", SubjectName = "GD Quốc phòng", SubjectCode = "GDQP", TeacherName = "Thầy Hoàng Nam", RoomName = "Sân trường", Session = "afternoon" },
-            new() { Weekday = 6, PeriodNo = 4, PeriodName = "Tiết 4 (Chiều)", StartTime = "16:05", EndTime = "16:50", SubjectName = "Sinh hoạt Đoàn trường", SubjectCode = "DOAN", TeacherName = "Bí thư Đoàn", RoomName = "Hội trường lớn", Session = "afternoon" },
-            new() { Weekday = 6, PeriodNo = 5, PeriodName = "Tiết 5 (Chiều)", StartTime = "16:55", EndTime = "17:40", SubjectName = "Tổng kết tuần", SubjectCode = "TK", TeacherName = "Cô Lê Thị Mai", RoomName = "A203", Session = "afternoon" }
-        };
-
-        var query = weeklyTimetable.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(session))
-        {
-            query = query.Where(t => string.Equals(t.Session, session, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (weekday.HasValue && weekday >= 2 && weekday <= 7)
-        {
-            query = query.Where(t => t.Weekday == weekday.Value);
-        }
-
-        return Task.FromResult(query.OrderBy(t => t.Weekday).ThenBy(t => t.Session == "afternoon" ? 1 : 0).ThenBy(t => t.PeriodNo).ToList());
+        var items = await PublishedWeek(userId, ct);
+        return items.Select(AsTimetableItem)
+            .Where(item => (!weekday.HasValue || item.Weekday == weekday)
+                && (string.IsNullOrWhiteSpace(session) || string.Equals(item.Session, session, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
     }
 
-    public Task<List<TimetableChangeNotificationDto>> GetTimetableChangesAsync(Guid userId, CancellationToken ct = default)
-    {
-        var changes = new List<TimetableChangeNotificationDto>
-        {
-            new()
+    public async Task<List<TimetableChangeNotificationDto>> GetTimetableChangesAsync(Guid userId, CancellationToken ct = default) =>
+        (await PublishedWeek(userId, ct)).Where(item => item.StaffId != item.OriginalStaffId)
+            .Select(item => new TimetableChangeNotificationDto
             {
-                Id = "change-1",
+                Id = $"{item.Id}:{item.OnDate:yyyy-MM-dd}",
                 Title = "Thay đổi giáo viên",
-                Type = "substitute",
-                BadgeText = "Dạy thay",
-                Description = "Thứ Tư (15/01) – Tiết 2: Môn Hóa học",
-                Detail = "Giáo viên dạy thay: Thầy Phạm Minh Đức",
-                EffectiveDate = "15/01/2025"
-            },
-            new()
-            {
-                Id = "change-2",
-                Title = "Chuyển phòng học",
-                Type = "room_change",
-                BadgeText = "Đã cập nhật",
-                Description = "Thứ Năm (16/01) – Tiết 4: Môn Hóa học",
-                Detail = "Chuyển từ A203 sang B101",
-                EffectiveDate = "16/01/2025"
-            }
-        };
+                Description = item.SubjectName,
+                Detail = $"Giáo viên dạy thay: {item.TeacherName}",
+                EffectiveDate = item.OnDate.ToString("dd/MM/yyyy")
+            }).ToList();
 
-        return Task.FromResult(changes);
+    private async Task<List<ScheduleOccurrence>> PublishedWeek(Guid userId, CancellationToken ct)
+    {
+        var school = await _schedule.StudentSchool(userId, _clock.GetUtcNow(), ct);
+        if (school == null) return [];
+        var monday = school.Today.AddDays(-((int)school.Today.DayOfWeek + 6) % 7);
+        return await _schedule.ForStudent(userId, school.Id, monday, monday.AddDays(6), false, ct);
     }
+
+    private static TimetableItemDto AsTimetableItem(ScheduleOccurrence item)
+    {
+        var timezone = TimeZoneInfo.FindSystemTimeZoneById(item.Timezone);
+        return new TimetableItemDto
+        {
+            PeriodNo = item.PeriodNo ?? 0,
+            PeriodName = $"Tiết {item.PeriodNo}",
+            StartTime = TimeZoneInfo.ConvertTime(item.StartsAt, timezone).ToString("HH:mm"),
+            EndTime = TimeZoneInfo.ConvertTime(item.EndsAt, timezone).ToString("HH:mm"),
+            SubjectName = item.SubjectName,
+            SubjectCode = item.SubjectCode,
+            TeacherName = item.TeacherName ?? string.Empty,
+            RoomName = item.RoomCode ?? string.Empty,
+            Weekday = (int)item.OnDate.DayOfWeek + 1,
+            IsSubstitute = item.StaffId != item.OriginalStaffId,
+            SubstituteTeacherName = item.StaffId != item.OriginalStaffId ? item.TeacherName : null,
+            Session = item.Shift ?? string.Empty
+        };
+    }
+
 
     public Task<AttendanceSummaryDto> GetAttendanceAsync(Guid userId, string? semester = null, string? month = null, string? academicYear = null, CancellationToken ct = default)
     {
@@ -1379,381 +1311,68 @@ public class StudentPortalService : IStudentPortalService
         return Task.FromResult(summary);
     }
 
-    public Task<List<ExamItemDto>> GetExamsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<List<ExamItemDto>> GetExamsAsync(Guid userId, CancellationToken ct = default)
     {
-        var summary = BuildExamScheduleSummary("Học kỳ I", "2025 – 2026", "Kiểm tra cuối kỳ I");
-        return Task.FromResult(summary.Exams);
+        var now = _clock.GetUtcNow();
+        var school = await _schedule.StudentSchool(userId, now, ct);
+        if (school == null) return [];
+        var published = await _schedule.ForStudent(userId, school.Id, school.Today, school.Today.AddDays(61), true, ct);
+        return published.Where(item => item.StartsAt >= now).Select((item, index) => AsExamItem(item, index, now)).ToList();
     }
 
-    public Task<ExamScheduleSummaryDto> GetExamScheduleSummaryAsync(Guid userId, string? semester = null, string? academicYear = null, string? examPeriod = null, CancellationToken ct = default)
+    public async Task<ExamScheduleSummaryDto> GetExamScheduleSummaryAsync(Guid userId, string? semester = null,
+        string? academicYear = null, string? examPeriod = null, CancellationToken ct = default)
     {
-        var sem = string.IsNullOrWhiteSpace(semester) ? "Học kỳ I" : semester.Trim();
-        var year = string.IsNullOrWhiteSpace(academicYear) ? "2025 – 2026" : academicYear.Trim();
-        var period = string.IsNullOrWhiteSpace(examPeriod) ? "Kiểm tra cuối kỳ I" : examPeriod.Trim();
-
-        var summary = BuildExamScheduleSummary(sem, year, period);
-        return Task.FromResult(summary);
-    }
-
-    private static ExamScheduleSummaryDto BuildExamScheduleSummary(string semester, string academicYear, string examPeriod)
-    {
-        bool isSem2 = semester.Contains("II");
-        bool isGrade10 = academicYear.Contains("2024") || academicYear.Contains("10");
-        bool isGrade12 = academicYear.Contains("2026") || academicYear.Contains("12");
-
-        var yearStr = isGrade10 ? "2024 – 2025" : isGrade12 ? "2026 – 2027" : "2025 – 2026";
-        var semStr = isSem2 ? "Học kỳ II" : "Học kỳ I";
-        var currentPeriod = string.IsNullOrWhiteSpace(examPeriod) || examPeriod.Contains("Tất cả")
-            ? (isSem2 ? "Kiểm tra cuối kỳ II" : "Kiểm tra cuối kỳ I")
-            : examPeriod;
-
-        var exams = new List<ExamItemDto>();
-
-        if (isGrade10)
-        {
-            // Năm học 2024 – 2025 (Lớp 10) - Đã hoàn thành toàn bộ
-            exams = new List<ExamItemDto>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 1, SubjectName = "Ngữ văn", SubjectCode = "VAN10", ExamType = isSem2 ? "Cuối kỳ" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Năm, 15/05/2025" : "Thứ Năm, 24/10/2024", DurationFormatted = "90 phút", DurationMinutes = 90,
-                    RoomName = "A102", ExamFormat = "Tự luận", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Cô Lê Thị Mai", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 2, SubjectName = "Toán", SubjectCode = "TOAN10", ExamType = isSem2 ? "Cuối kỳ" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Sáu, 16/05/2025" : "Thứ Sáu, 25/10/2024", DurationFormatted = "90 phút", DurationMinutes = 90,
-                    RoomName = "A102", ExamFormat = "Trắc nghiệm 70% & Tự luận 30%", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Thầy Trần Quốc Huy", AllowedMaterials = "Máy tính bỏ túi cho phép", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 3, SubjectName = "Tiếng Anh", SubjectCode = "ANH10", ExamType = isSem2 ? "Cuối kỳ" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Hai, 19/05/2025" : "Thứ Hai, 28/10/2024", DurationFormatted = "60 phút", DurationMinutes = 60,
-                    RoomName = "A102", ExamFormat = "Trắc nghiệm khách quan", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Cô Phạm Minh Thư", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 4, SubjectName = "Hóa học", SubjectCode = "HOA10", ExamType = isSem2 ? "Cuối kỳ" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Ba, 20/05/2025" : "Thứ Ba, 29/10/2024", DurationFormatted = "60 phút", DurationMinutes = 60,
-                    RoomName = "B102", ExamFormat = "Trắc nghiệm 40 câu", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Thầy Đỗ Quốc Tuấn", AllowedMaterials = "Bảng tuần hoàn, máy tính", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 5, SubjectName = "Lịch sử", SubjectCode = "SU10", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Tư, 21/05/2025" : "Thứ Hai, 18/11/2024", DurationFormatted = "45 phút", DurationMinutes = 45,
-                    RoomName = "A102", ExamFormat = "Trắc nghiệm", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Cô Trần Thúy Ngân", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 6, SubjectName = "Địa lý", SubjectCode = "DIA10", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Năm, 22/05/2025" : "Thứ Ba, 19/11/2024", DurationFormatted = "45 phút", DurationMinutes = 45,
-                    RoomName = "A102", ExamFormat = "Trắc nghiệm & Atlat", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Thầy Bùi Quang Hưng", AllowedMaterials = "Atlat Địa lý Việt Nam", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 7, SubjectName = "Vật lý", SubjectCode = "LY10", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Sáu, 23/05/2025" : "Thứ Tư, 20/11/2024", DurationFormatted = "60 phút", DurationMinutes = 60,
-                    RoomName = "B102", ExamFormat = "Trắc nghiệm 40 câu", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Thầy Lê Viết Nam", AllowedMaterials = "Máy tính bỏ túi", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 8, SubjectName = "Sinh học", SubjectCode = "SINH10", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Hai, 26/05/2025" : "Thứ Năm, 21/11/2024", DurationFormatted = "60 phút", DurationMinutes = 60,
-                    RoomName = "B102", ExamFormat = "Trắc nghiệm", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Cô Nguyễn Mai Trang", AllowedMaterials = "Bút viết", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 9, SubjectName = "Tin học", SubjectCode = "TIN10", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Ba, 27/05/2025" : "Thứ Sáu, 22/11/2024", DurationFormatted = "45 phút", DurationMinutes = 45,
-                    RoomName = "B201", ExamFormat = "Thực hành trên máy tính", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Thầy Phan Hoàng Anh", AllowedMaterials = "Không mang USB", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 10, SubjectName = "GDTC", SubjectCode = "GDTC10", ExamType = "Đánh giá",
-                    ExamDateFormatted = isSem2 ? "Trong tuần 28/05 – 02/06" : "Trong tuần 25/11 – 29/11", DurationFormatted = "Thực hành", DurationMinutes = 45,
-                    RoomName = "Sân trường", ExamFormat = "Thực hành thể lực", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                    Invigilator = "Thầy Đặng Hữu Phong", AllowedMaterials = "Trang phục thể dục", Semester = semStr, AcademicYear = yearStr
-                }
-            };
-        }
-        else if (isGrade12)
-        {
-            // Năm học 2026 – 2027 (Lớp 12) - Kế hoạch năm học mới
-            exams = new List<ExamItemDto>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 1, SubjectName = "Toán", SubjectCode = "TOAN12", ExamType = isSem2 ? "Thi thử TN" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Năm, 18/03/2027" : "Thứ Năm, 22/10/2026", DurationFormatted = "90 phút", DurationMinutes = 90,
-                    RoomName = "A301", ExamFormat = "Trắc nghiệm chuẩn cấu trúc Bộ GD&ĐT", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                    Invigilator = "Thầy Trần Quốc Huy", AllowedMaterials = "Máy tính bỏ túi fx-580VNX trở lên", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 2, SubjectName = "Ngữ văn", SubjectCode = "VAN12", ExamType = isSem2 ? "Thi thử TN" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Sáu, 19/03/2027" : "Thứ Sáu, 23/10/2026", DurationFormatted = "120 phút", DurationMinutes = 120,
-                    RoomName = "A301", ExamFormat = "Tự luận (Nghị luận xã hội & tác phẩm)", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                    Invigilator = "Cô Lê Thị Mai", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 3, SubjectName = "Tiếng Anh", SubjectCode = "ANH12", ExamType = isSem2 ? "Thi thử TN" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Hai, 22/03/2027" : "Thứ Hai, 26/10/2026", DurationFormatted = "60 phút", DurationMinutes = 60,
-                    RoomName = "A301", ExamFormat = "Trắc nghiệm 50 câu", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                    Invigilator = "Cô Phạm Minh Thư", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 4, SubjectName = "Vật lý", SubjectCode = "LY12", ExamType = isSem2 ? "Cuối kỳ" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Ba, 23/03/2027" : "Thứ Ba, 27/10/2026", DurationFormatted = "50 phút", DurationMinutes = 50,
-                    RoomName = "B302", ExamFormat = "Trắc nghiệm 40 câu", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Thầy Lê Viết Nam", AllowedMaterials = "Máy tính bỏ túi", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 5, SubjectName = "Hóa học", SubjectCode = "HOA12", ExamType = isSem2 ? "Cuối kỳ" : "Giữa kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Tư, 24/03/2027" : "Thứ Tư, 28/10/2026", DurationFormatted = "50 phút", DurationMinutes = 50,
-                    RoomName = "B302", ExamFormat = "Trắc nghiệm 40 câu", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Thầy Đỗ Quốc Tuấn", AllowedMaterials = "Bảng tuần hoàn, máy tính", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 6, SubjectName = "Sinh học", SubjectCode = "SINH12", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Năm, 13/05/2027" : "Thứ Hai, 16/11/2026", DurationFormatted = "50 phút", DurationMinutes = 50,
-                    RoomName = "B302", ExamFormat = "Trắc nghiệm 40 câu", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Cô Nguyễn Mai Trang", AllowedMaterials = "Bút viết, máy tính", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 7, SubjectName = "Lịch sử", SubjectCode = "SU12", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Sáu, 14/05/2027" : "Thứ Ba, 17/11/2026", DurationFormatted = "50 phút", DurationMinutes = 50,
-                    RoomName = "A301", ExamFormat = "Trắc nghiệm 40 câu", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Cô Trần Thúy Ngân", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 8, SubjectName = "Địa lý", SubjectCode = "DIA12", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Hai, 17/05/2027" : "Thứ Tư, 18/11/2026", DurationFormatted = "50 phút", DurationMinutes = 50,
-                    RoomName = "A301", ExamFormat = "Trắc nghiệm & Atlat", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Thầy Bùi Quang Hưng", AllowedMaterials = "Atlat Địa lý Việt Nam", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 9, SubjectName = "Tin học", SubjectCode = "TIN12", ExamType = isSem2 ? "Cuối kỳ" : "Cuối kỳ",
-                    ExamDateFormatted = isSem2 ? "Thứ Ba, 18/05/2027" : "Thứ Năm, 19/11/2026", DurationFormatted = "45 phút", DurationMinutes = 45,
-                    RoomName = "B201", ExamFormat = "Thực hành trên máy tính", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Thầy Phan Hoàng Anh", AllowedMaterials = "Không mang USB", Semester = semStr, AcademicYear = yearStr
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(), Stt = 10, SubjectName = "GDTC", SubjectCode = "GDTC12", ExamType = "Đánh giá",
-                    ExamDateFormatted = isSem2 ? "Trong tuần 20/05 – 25/05" : "Trong tuần 23/11 – 27/11", DurationFormatted = "Thực hành", DurationMinutes = 45,
-                    RoomName = "Sân trường", ExamFormat = "Kiểm tra thể lực tốt nghiệp", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                    Invigilator = "Thầy Đặng Hữu Phong", AllowedMaterials = "Trang phục thể thao", Semester = semStr, AcademicYear = yearStr
-                }
-            };
-        }
-        else
-        {
-            // Năm học 2025 – 2026 (Lớp 11) - Năm học hiện tại
-            if (isSem2)
-            {
-                exams = new List<ExamItemDto>
-                {
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 1, SubjectName = "Ngữ văn", SubjectCode = "VAN11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Năm, 12/03/2026", DurationFormatted = "90 phút", DurationMinutes = 90,
-                        RoomName = "A203", ExamFormat = "Tự luận", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Cô Phạm Minh Thư", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 2, SubjectName = "Toán", SubjectCode = "TOAN11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Sáu, 13/03/2026", DurationFormatted = "90 phút", DurationMinutes = 90,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm 70% & Tự luận 30%", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Thầy Nguyễn Văn Thành", AllowedMaterials = "Máy tính bỏ túi cho phép", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 3, SubjectName = "Tiếng Anh", SubjectCode = "ANH11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Hai, 16/03/2026", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm & Nghe hiểu", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Cô Hoàng Thu Hà", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 4, SubjectName = "Hóa học", SubjectCode = "HOA11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Ba, 17/03/2026", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "B101", ExamFormat = "Trắc nghiệm 40 câu", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Thầy Đỗ Quốc Tuấn", AllowedMaterials = "Bảng tuần hoàn, máy tính", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 5, SubjectName = "Lịch sử", SubjectCode = "SU11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Hai, 11/05/2026", DurationFormatted = "45 phút", DurationMinutes = 45,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm 40 câu", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Cô Trần Thúy Ngân", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 6, SubjectName = "Địa lý", SubjectCode = "DIA11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Ba, 12/05/2026", DurationFormatted = "45 phút", DurationMinutes = 45,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm & Atlat", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Thầy Bùi Quang Hưng", AllowedMaterials = "Atlat Địa lý Việt Nam", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 7, SubjectName = "Vật lý", SubjectCode = "LY11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Tư, 13/05/2026", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "B101", ExamFormat = "Trắc nghiệm 40 câu", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Thầy Lê Viết Nam", AllowedMaterials = "Máy tính bỏ túi", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 8, SubjectName = "Sinh học", SubjectCode = "SINH11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Năm, 14/05/2026", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "B101", ExamFormat = "Trắc nghiệm", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Cô Nguyễn Mai Trang", AllowedMaterials = "Bút viết", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 9, SubjectName = "Tin học", SubjectCode = "TIN11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Sáu, 15/05/2026", DurationFormatted = "45 phút", DurationMinutes = 45,
-                        RoomName = "B201", ExamFormat = "Thực hành trên máy tính", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Thầy Phan Hoàng Anh", AllowedMaterials = "Không mang USB", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 10, SubjectName = "GDTC", SubjectCode = "GDTC11", ExamType = "Đánh giá",
-                        ExamDateFormatted = "Trong tuần 18/05 – 23/05", DurationFormatted = "Thực hành", DurationMinutes = 45,
-                        RoomName = "Sân trường", ExamFormat = "Kiểm tra thể lực", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Thầy Đặng Hữu Phong", AllowedMaterials = "Trang phục thể thao", Semester = semStr, AcademicYear = yearStr
-                    }
-                };
-            }
-            else
-            {
-                // Học kỳ I (Lớp 11) - Khớp 100% ảnh mockup media_1794147648789_49692475.jpg
-                exams = new List<ExamItemDto>
-                {
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 1, SubjectName = "Ngữ văn", SubjectCode = "VAN11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Năm, 23/10/2025", DurationFormatted = "90 phút", DurationMinutes = 90,
-                        RoomName = "A203", ExamFormat = "Tự luận", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                        Invigilator = "Cô Phạm Minh Thư", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 2, SubjectName = "Toán", SubjectCode = "TOAN11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Sáu, 24/10/2025", DurationFormatted = "90 phút", DurationMinutes = 90,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm 70% & Tự luận 30%", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                        Invigilator = "Thầy Nguyễn Văn Thành", AllowedMaterials = "Máy tính bỏ túi cho phép", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 3, SubjectName = "Tiếng Anh", SubjectCode = "ANH11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Hai, 27/10/2025", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm & Nghe hiểu", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                        Invigilator = "Cô Hoàng Thu Hà", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 4, SubjectName = "Hóa học", SubjectCode = "HOA11", ExamType = "Giữa kỳ",
-                        ExamDateFormatted = "Thứ Ba, 28/10/2025", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "B101", ExamFormat = "Trắc nghiệm 40 câu", Status = "completed", StatusTextVi = "Đã hoàn thành",
-                        Invigilator = "Thầy Đỗ Quốc Tuấn", AllowedMaterials = "Bảng tuần hoàn, máy tính", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 5, SubjectName = "Lịch sử", SubjectCode = "SU11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Hai, 17/11/2025", DurationFormatted = "45 phút", DurationMinutes = 45,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm 40 câu", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Cô Trần Thúy Ngân", AllowedMaterials = "Không sử dụng tài liệu", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 6, SubjectName = "Địa lý", SubjectCode = "DIA11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Ba, 18/11/2025", DurationFormatted = "45 phút", DurationMinutes = 45,
-                        RoomName = "A203", ExamFormat = "Trắc nghiệm & Atlat", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Thầy Bùi Quang Hưng", AllowedMaterials = "Atlat Địa lý Việt Nam", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 7, SubjectName = "Vật lý", SubjectCode = "LY11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Tư, 19/11/2025", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "B101", ExamFormat = "Trắc nghiệm 40 câu", Status = "upcoming", StatusTextVi = "Sắp diễn ra",
-                        Invigilator = "Thầy Lê Viết Nam", AllowedMaterials = "Máy tính bỏ túi", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 8, SubjectName = "Sinh học", SubjectCode = "SINH11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Năm, 20/11/2025", DurationFormatted = "60 phút", DurationMinutes = 60,
-                        RoomName = "B101", ExamFormat = "Trắc nghiệm", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Cô Nguyễn Mai Trang", AllowedMaterials = "Bút viết", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 9, SubjectName = "Tin học", SubjectCode = "TIN11", ExamType = "Cuối kỳ",
-                        ExamDateFormatted = "Thứ Sáu, 21/11/2025", DurationFormatted = "45 phút", DurationMinutes = 45,
-                        RoomName = "B201", ExamFormat = "Thực hành trên máy tính", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Thầy Phan Hoàng Anh", AllowedMaterials = "Không mang USB", Semester = semStr, AcademicYear = yearStr
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(), Stt = 10, SubjectName = "GDTC", SubjectCode = "GDTC11", ExamType = "Đánh giá",
-                        ExamDateFormatted = "Trong tuần 22/11 – 28/11", DurationFormatted = "Thực hành", DurationMinutes = 45,
-                        RoomName = "Sân trường", ExamFormat = "Kiểm tra thể lực", Status = "pending", StatusTextVi = "Chưa diễn ra",
-                        Invigilator = "Thầy Đặng Hữu Phong", AllowedMaterials = "Trang phục thể thao", Semester = semStr, AcademicYear = yearStr
-                    }
-                };
-            }
-        }
-
-        var totalExams = exams.Count;
-        var completedExams = exams.Count(e => e.Status == "completed");
-        var upcomingExams = exams.Count(e => e.Status == "upcoming");
-        var remainingExams = exams.Count(e => e.Status == "pending");
-
-        // Luôn trả về đầy đủ 10 môn thi của học kỳ như trong ảnh mẫu thiết kế
-        var filteredExams = exams;
-
-        var upcomingList = exams.Where(e => e.Status == "upcoming").ToList();
-        if (upcomingList.Count == 0 && remainingExams > 0)
-        {
-            upcomingList = exams.Where(e => e.Status == "pending").Take(3).ToList();
-        }
-
-        var nextExam = upcomingList.FirstOrDefault() 
-            ?? exams.FirstOrDefault(e => e.Status == "upcoming") 
-            ?? exams.FirstOrDefault(e => e.Status == "pending")
-            ?? exams.FirstOrDefault();
-
+        var now = _clock.GetUtcNow();
+        var school = await _schedule.StudentSchool(userId, now, ct);
+        var schedule = school == null ? [] : await _schedule.ForStudent(userId, school.Id, school.Today.AddDays(-365),
+            school.Today.AddDays(365), true, ct);
+        var exams = schedule.Where(item => (string.IsNullOrWhiteSpace(semester) || item.SemesterName == semester)
+                && (string.IsNullOrWhiteSpace(academicYear) || item.AcademicYearName == academicYear))
+            .Select((item, index) => AsExamItem(item, index, now)).ToList();
+        var upcoming = exams.Where(item => item.Status == "upcoming").ToList();
         return new ExamScheduleSummaryDto
         {
-            Semester = semStr,
-            AcademicYear = yearStr,
-            CurrentExamPeriod = currentPeriod,
-            TotalExams = totalExams,
-            CompletedExams = completedExams,
-            UpcomingExams = upcomingExams,
-            RemainingExams = remainingExams,
-            Exams = filteredExams,
-            NextExam = nextExam,
-            UpcomingList = upcomingList.Take(3).ToList()
+            Semester = semester ?? string.Empty,
+            AcademicYear = academicYear ?? string.Empty,
+            CurrentExamPeriod = string.Empty,
+            TotalExams = exams.Count,
+            CompletedExams = exams.Count(item => item.Status == "completed"),
+            UpcomingExams = upcoming.Count,
+            RemainingExams = exams.Count(item => item.Status != "completed"),
+            Exams = exams,
+            NextExam = upcoming.FirstOrDefault(),
+            UpcomingList = upcoming
         };
     }
+
+    private static ExamItemDto AsExamItem(ScheduleOccurrence item, int index, DateTimeOffset now)
+    {
+        var minutes = (int)(item.EndsAt - item.StartsAt).TotalMinutes;
+        var finished = item.EndsAt <= now;
+        var underway = !finished && item.StartsAt <= now;
+        return new ExamItemDto
+        {
+            Id = item.Id,
+            Stt = index + 1,
+            SubjectName = item.SubjectName,
+            SubjectCode = item.SubjectCode,
+            ExamTitle = $"Kiểm tra {item.SubjectName}",
+            ExamType = "Kiểm tra",
+            ExamFormat = string.Empty,
+            ExamDateFormatted = item.OnDate.ToString("dd/MM/yyyy"),
+            DurationFormatted = $"{minutes} phút",
+            DurationMinutes = minutes,
+            StartsAt = item.StartsAt.UtcDateTime,
+            EndsAt = item.EndsAt.UtcDateTime,
+            RoomName = item.RoomCode ?? string.Empty,
+            Semester = item.SemesterName,
+            AcademicYear = item.AcademicYearName,
+            Status = finished ? "completed" : underway ? "pending" : "upcoming",
+            StatusTextVi = finished ? "Đã kết thúc" : underway ? "Đang diễn ra" : "Chưa diễn ra"
+        };
+    }
+
 
     public async Task<List<AnnouncementItemDto>> GetAnnouncementsAsync(Guid userId, CancellationToken ct = default)
     {

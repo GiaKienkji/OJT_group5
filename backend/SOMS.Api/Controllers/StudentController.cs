@@ -36,6 +36,13 @@ public class StudentController : ControllerBase
         return true;
     }
 
+    private bool TryGetAuthenticatedUser(out Guid userId)
+    {
+        userId = Guid.Empty;
+        return User.Identity?.IsAuthenticated == true &&
+            Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out userId);
+    }
+
     /// <summary>
     /// Tra cứu thông tin hồ sơ của học sinh đang đăng nhập.
     /// </summary>
@@ -57,11 +64,11 @@ public class StudentController : ControllerBase
     /// Dữ liệu tổng hợp trang Dashboard cho học sinh: Thời khóa biểu hôm nay, tỷ lệ chuyên cần, kỳ thi sắp tới, thông báo mới.
     /// </summary>
     [HttpGet("dashboard")]
-    [AllowAnonymous]
+    [Authorize]
     [ProducesResponseType(typeof(StudentDashboardDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDashboard(CancellationToken cancellationToken)
     {
-        TryGetUserId(out var userId);
+        if (!TryGetAuthenticatedUser(out var userId)) return Unauthorized();
 
         var dashboard = await _studentPortalService.GetDashboardAsync(userId, cancellationToken);
         return Ok(dashboard);
@@ -85,11 +92,11 @@ public class StudentController : ControllerBase
     /// Tra cứu thời khóa biểu của học sinh (theo ngày hoặc cả tuần, có thể lọc buổi sáng/buổi chiều).
     /// </summary>
     [HttpGet("timetable")]
-    [AllowAnonymous]
+    [Authorize]
     [ProducesResponseType(typeof(List<TimetableItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTimetable([FromQuery] int? weekday, [FromQuery] string? session, CancellationToken cancellationToken)
     {
-        TryGetUserId(out var userId);
+        if (!TryGetAuthenticatedUser(out var userId)) return Unauthorized();
 
         var timetable = await _studentPortalService.GetTimetableAsync(userId, weekday, session, cancellationToken);
         return Ok(timetable);
@@ -99,11 +106,11 @@ public class StudentController : ControllerBase
     /// Danh sách thông báo thay đổi lịch học, dạy thay và chuyển phòng học.
     /// </summary>
     [HttpGet("timetable/changes")]
-    [AllowAnonymous]
+    [Authorize]
     [ProducesResponseType(typeof(List<TimetableChangeNotificationDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTimetableChanges(CancellationToken cancellationToken)
     {
-        TryGetUserId(out var userId);
+        if (!TryGetAuthenticatedUser(out var userId)) return Unauthorized();
 
         var changes = await _studentPortalService.GetTimetableChangesAsync(userId, cancellationToken);
         return Ok(changes);
@@ -140,11 +147,11 @@ public class StudentController : ControllerBase
     /// Lịch kiểm tra định kỳ và thi học kỳ.
     /// </summary>
     [HttpGet("exams")]
-    [AllowAnonymous]
+    [Authorize]
     [ProducesResponseType(typeof(List<ExamItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExams(CancellationToken cancellationToken)
     {
-        TryGetUserId(out var userId);
+        if (!TryGetAuthenticatedUser(out var userId)) return Unauthorized();
         var exams = await _studentPortalService.GetExamsAsync(userId, cancellationToken);
         return Ok(exams);
     }
@@ -153,7 +160,7 @@ public class StudentController : ControllerBase
     /// Báo cáo tổng hợp lịch thi, thống kê và chi tiết bài kiểm tra theo học kỳ và năm học.
     /// </summary>
     [HttpGet("exams/summary")]
-    [AllowAnonymous]
+    [Authorize]
     [ProducesResponseType(typeof(ExamScheduleSummaryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetExamScheduleSummary(
         [FromQuery] string? semester,
@@ -161,7 +168,7 @@ public class StudentController : ControllerBase
         [FromQuery] string? examPeriod,
         CancellationToken cancellationToken)
     {
-        TryGetUserId(out var userId);
+        if (!TryGetAuthenticatedUser(out var userId)) return Unauthorized();
         var summary = await _studentPortalService.GetExamScheduleSummaryAsync(userId, semester, academicYear, examPeriod, cancellationToken);
         return Ok(summary);
     }

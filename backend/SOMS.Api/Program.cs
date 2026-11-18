@@ -19,6 +19,7 @@ if (builder.Environment.IsDevelopment())
     {
         if (File.Exists(envPath))
         {
+            var localSettings = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
             foreach (var line in File.ReadAllLines(envPath))
             {
                 var trimmed = line.Trim();
@@ -28,19 +29,22 @@ if (builder.Environment.IsDevelopment())
                 {
                     var key = parts[0].Trim();
                     var value = parts[1].Trim().Trim('"', '\'');
-                    Environment.SetEnvironmentVariable(key, value);
+                    if (key.Length > 0)
+                        localSettings[key.Replace("__", ":")] = value;
                 }
             }
+            builder.Configuration.AddInMemoryCollection(localSettings);
             break;
         }
     }
 
-    // Reload configuration to pick up any environment variables set from .env
+    // Process settings take precedence over the local file.
     builder.Configuration.AddEnvironmentVariables();
     builder.Configuration.AddUserSecrets<Program>(optional: true);
 }
 
 // Add services to the container
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

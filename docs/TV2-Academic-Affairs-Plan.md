@@ -2,27 +2,39 @@
 
 Ngày lập: 18/11/2026. Người phụ trách: TV2. Dự án: SOMS / OJT_group5.
 
-## 1. Mục tiêu và hiện trạng đã kiểm tra
+## 1. Hiện trạng và mục tiêu bàn giao
 
-Bàn giao đầy đủ quản lý hồ sơ học sinh, lớp, môn học, phân công giảng dạy/GVCN, thời khóa biểu nháp, kiểm tra xung đột, dạy thay và lịch kiểm tra. Mỗi chức năng có UI, API, lưu PostgreSQL, validation, phân quyền, kiểm thử và demo.
+Cập nhật 18/11/2026 trên nhánh `hau`. Phạm vi là phần Giáo vụ của đồ án SOMS cuối kỳ.
 
-Hiện trạng source:
-- Backend `backend/SOMS.sln`: .NET 8; Api, Application, Domain, Infrastructure; EF Core/Npgsql; JWT và permission policies.
-- `SomsDbContext` hiện ánh xạ 7 entity thuộc tài khoản/trường/quyền; chưa có entity TV2 và chưa thấy migration trong cây source đã kiểm tra.
-- Có role `academic_affairs`; đã khai báo `students.manage`, `classes.manage`, `subjects.manage`, `teaching_assignments.manage`, `homeroom.assign`, `timetables.draft`, `timetables.publish`, `exams.manage`, `academic.manage`, `scheduling.manage`. Khai báo constant chưa chứng minh dữ liệu quyền đã được seed trên DB.
-- Frontend React 18, TypeScript, Vite, Tailwind; `App.tsx` có dashboard Giáo vụ dạng khung. Chưa có module Academic chuyên biệt; package.json chưa có lệnh test UI.
-- StudentPortalService tham chiếu SQL tới students, staff, academic_years, semesters, grade_levels, classes, class_enrollments; lịch học có dữ liệu mẫu. Mục 4 đối chiếu các bảng này với catalog Supabase.
-- PermissionAuthorizationHandler hiện có nhánh chấp nhận permission claim ngay và nhánh truy vấn membership chưa giới hạn trường/hiệu lực thời gian. Cần phối hợp TV1 bổ sung school scope và xử lý thu hồi quyền.
-- Các thư mục Academic.Api, academic-affairs, src chưa có source module TV2 được phát hiện; triển khai trong solution đang hoạt động, tránh tạo backend thứ hai.
+| Hạng mục | Trạng thái đã xác nhận | Việc còn lại |
+|---|---|---|
+| Chạy local | Vite mở ở `localhost:5173`, ASP.NET API ở `localhost:5062` | Mỗi thành viên dùng cấu hình local của mình |
+| Kết nối Supabase | API health check trả HTTP 200 với project `jaivisftvckbaxnnzhbi` | Xác minh quyền và dữ liệu mẫu của từng chức năng trên môi trường thử |
+| Đăng nhập | API đăng nhập demo Giáo vụ trả HTTP 200. Dashboard vào được với vai trò `academic_affairs` | Kiểm tra quyền cụ thể và trường của tài khoản ở từng API mới |
+| Giao diện | `frontend/src/App.tsx` có route `/academic/dashboard` và các thẻ giới thiệu | Thêm điều hướng và màn hình thao tác cho từng chức năng |
+| API Giáo vụ | Chưa thấy controller/route `/api/academic` hoặc module Giáo vụ riêng trên `hau` | Xây luồng đọc và tạo lớp đầu tiên |
+| Cấu trúc database | MCP đã đọc catalog `public`. Các bảng lõi TV2 đã có, xem mục 4 | Chưa xác minh số lượng bản ghi nghiệp vụ. Chuẩn bị tình huống danh sách trống và thiếu năm học/khối |
 
-Supabase MCP đã xác nhận URL thuộc project `jaivisftvckbaxnnzhbi`. Ngày 18/11/2026, truy vấn catalog PostgreSQL ghi nhận 74 bảng trong `public`, không có view hoặc materialized view trong danh sách đối tượng khảo sát. Mục 4 ghi lại các cột, khóa, chỉ mục, trigger và RLS liên quan trực tiếp đến TV2. Đợt khảo sát chỉ đọc metadata, không truy vấn bản ghi nghiệp vụ.
+Mục tiêu cuối kỳ là quản lý học sinh, lớp, môn, phân công GV/GVCN, thời khóa biểu, dạy thay và lịch kiểm tra. Mỗi phần có thao tác chạy được trên UI và dữ liệu đọc/ghi qua API. Bản demo ưu tiên một kịch bản xuyên suốt với dữ liệu nhỏ, đúng quyền và xử lý được các lỗi thường gặp.
 
-## 2. Bước 0 — Hoàn thiện mapping và chốt hợp đồng nhóm
+## 2. Bắt đầu ngay với Quản lý lớp học
 
-- Đã xác minh project và schema qua Supabase MCP. Dùng mapping ở mục 4 làm baseline cho EF Core và lập ERD từ các khóa ngoại thực tế.
-- Xác nhận owner TV1/TV3/TV5, hợp đồng quyền, workflow duyệt lịch, lịch nghỉ và nguồn chuyên môn. Giáo viên dùng `staff.id` trong nghiệp vụ, còn danh tính đăng nhập liên kết qua `staff.user_id → profiles.id`.
-- Kiểm tra grant và hành vi RLS bằng role runtime trên DB thử. Kiểm tra seed quyền và chất lượng dữ liệu là công việc tiếp theo, ngoài phạm vi khảo sát metadata.
-- Chốt một nguồn migration với nhóm. Baseline các bảng đã có và chỉ tạo migration cho phần thiếu sau khi thống nhất. Thử SQL diff, điều kiện triển khai và rollback trên PostgreSQL tách biệt.
+### 2.1. Xác định dữ liệu cho luồng đầu tiên
+
+- Dùng tài khoản Giáo vụ mẫu có sẵn. Lấy danh tính từ JWT đã xác thực và trường từ `school_memberships` còn hiệu lực. Backend dùng trường của membership hợp lệ khi chỉ có một trường. Trường hợp nhiều trường, yêu cầu chọn trường và kiểm tra membership của trường được chọn ở backend.
+- Chuẩn bị ít nhất một năm học và một khối thuộc trường demo. Nếu thiếu, hiển thị rõ danh mục nào chưa có và chuẩn bị dữ liệu mẫu trên DB thử với người quản lý DB. Lớp cần `academic_year_id` và `grade_level_id` hợp lệ trước khi tạo.
+- Dùng bảng `public.classes` hiện có. Map `school_id`, `academic_year_id`, `grade_level_id`, `code`, `name`, `capacity`, `status` và xác thực các tham chiếu cùng trường. GVCN có thể để trống trong luồng tạo lớp đầu tiên.
+
+### 2.2. Chia thành hai phần có thể kiểm thử riêng
+
+| Đầu việc | Cách thực hiện | Xong khi |
+|---|---|---|
+| 1. Danh sách lớp | Tạo `GET /api/academic/classes` và dữ liệu chọn năm học/khối qua các API ngữ cảnh ở mục 6. Cho lọc theo năm học. Trả mã, tên, khối, năm học, sức chứa và trạng thái. | Tài khoản Giáo vụ chỉ thấy lớp trong trường được phép, danh sách trống trả thành công. |
+| 2. Màn hình lớp | Thêm lối vào **Lớp học** từ dashboard. Dùng auth/API client hiện có. Hiển thị bảng, bộ lọc, đang tải, chưa có lớp và nút thử lại khi lỗi. | Mở được từ dashboard và tải lại trang vẫn đọc từ API. |
+| 3. Tạo lớp | Tạo `POST /api/academic/classes`. Form gồm mã, tên, năm học, khối và sức chứa tùy chọn. Backend xác thực mã/tên, sức chứa dương nếu có, cùng trường và unique mã theo năm học. | Lưu thành công trả 201 và lớp xuất hiện sau tải lại. Mã trùng trả 409, trường nhập sai hiển thị lỗi tương ứng. |
+| 4. Thử quyền và lỗi | Thử khi chưa đăng nhập, khi thiếu quyền, khi dùng năm học/khối của trường khác, khi danh mục trống hoặc API lỗi. | Thấy trạng thái đúng trên UI và API chặn truy cập ngoài phạm vi. |
+
+Sau khi nghiệm thu phần này, bổ sung sửa lớp và lưu trữ lớp theo trạng thái, rồi chuyển sang hồ sơ học sinh, ghi danh và chuyển lớp. Chỉ chuẩn bị bản ghi thử trên môi trường đã thống nhất với nhóm.
 
 ## 3. Kiến trúc triển khai
 
@@ -43,7 +55,7 @@ Không dùng dữ liệu mẫu làm fallback khi API/DB lỗi; hiển thị lỗ
 
 | Nhóm | Bảng và cột thực tế | Áp dụng cho TV2 |
 |---|---|---|
-| Trường, năm học, kỳ, khối | `schools.timezone`, `academic_years(school_id, name, start_date, end_date, status)`, `semesters(academic_year_id, ordinal, start_date, end_date, status)`, `grade_levels(school_id, grade_number)` | Kỳ lấy trường qua năm học. Mỗi trường có tối đa một năm học `active`. Khối 6–12, duy nhất theo trường. Kiểm tra ngày học kỳ nằm trong năm học. |
+| Trường, năm học, kỳ, khối | `schools.timezone`, `academic_years(school_id, name, start_date, end_date, status)`, `semesters(academic_year_id, ordinal, start_date, end_date, status)`, `grade_levels(school_id, grade_number)` | Kỳ lấy trường qua năm học. Mỗi trường có tối đa một năm học `active`. Khối 6–12, duy nhất theo trường. Với SOMS, cấu hình hai học kỳ theo thứ tự 1 và 2, kiểm tra cả hai nằm trong năm học và không chồng ngày. Ngày hiệu lực lấy từ cấu hình từng năm; khoảng nghỉ hè nằm sau Học kỳ II và trước Học kỳ I năm tiếp theo. |
 | Học sinh | `students(school_id, user_id, student_code, full_name, date_of_birth, status, admitted_on)` | Mã duy nhất theo trường, `user_id` tùy chọn và tham chiếu `profiles.id`. Trạng thái `enrolled/transferred/graduated/withdrawn`. Chốt thao tác archive theo nghiệp vụ và CHECK hiện có. |
 | Lớp và GVCN | `classes(school_id, academic_year_id, grade_level_id, code, name, homeroom_staff_id, capacity, status)` | Mã duy nhất theo năm học. `capacity` cho phép NULL, nếu có phải dương. `homeroom_staff_id → staff.id` lưu GVCN hiện tại. Lịch sử và khoảng hiệu lực cần bổ sung nếu dùng cho AA-06. |
 | Ghi danh | `class_enrollments(class_id, student_id, enrolled_on, left_on, status)` | `active/moved/completed`, duy nhất theo lớp, học sinh và ngày vào. Partial unique index giới hạn một dòng `active` mỗi học sinh. Chuyển lớp trong transaction và kiểm tra các khoảng lịch sử chồng lấn. |
@@ -96,7 +108,7 @@ Prefix `/api/academic`; tài nguyên luôn được lọc theo trường đượ
 | GVCN | GET/POST /classes/{id}/homeroom-assignments | homeroom.assign |
 | Lịch nháp | GET/POST /timetables; GET /timetables/{id}; POST /timetables/{id}/clone; POST/PUT/DELETE /timetables/{id}/entries[/{entryId}] | timetables.draft |
 | Xung đột | POST /timetables/{id}/validate; POST /scheduling/check-conflicts; GET /scheduling/suggestions | timetables.draft hoặc scheduling.manage theo thao tác |
-| Vòng đời lịch | POST /timetables/{id}/submit, /approve, /reject, /publish | draft để gửi; timetables.approve để duyệt; timetables.publish để công bố |
+| Vòng đời lịch | POST /timetables/{id}/submit, /approve, /reject, /publish | Giáo vụ gửi bằng timetables.draft; BGH duyệt bằng timetables.approve và công bố bằng timetables.publish |
 | Lịch công bố | GET /schedule?from=&to=&classId=&teacherId=&roomId= | Quyền xem theo vai trò và phạm vi đối tượng |
 | Dạy thay | GET/POST /substitutions; POST /substitutions/{id}/cancel; GET /sessions/{id}/substitute-candidates | scheduling.manage; thêm substitutions.manage chỉ khi nhóm quyết định |
 | Kiểm tra | GET/POST /exams; GET/PUT /exams/{id}; POST /exams/{id}/publish, /cancel | exams.manage |
@@ -112,7 +124,7 @@ Quy tắc cứng:
 2. Một lớp không có hai hoạt động chồng thời gian, kể cả kiểm tra và dạy thay.
 3. Một phòng không bị hai lịch chiếm chồng thời gian; không dùng phòng khóa/bảo trì; đủ capacity/loại phòng.
 4. GV có phân công/chuyên môn hợp lệ, không nghỉ được duyệt và còn membership hiệu lực; dữ liệu cùng trường, kỳ và khoảng hiệu lực.
-5. Lịch nằm trong ngày học/khung giờ hợp lệ, không vượt kỳ; ngoại lệ ngày nghỉ và thay đổi theo ngày được áp dụng trước khi kiểm tra.
+5. Lịch học và dạy thay nằm trong học kỳ và khung giờ hợp lệ. Các ngày nghỉ được áp dụng trước khi kiểm tra. Khoảng nghỉ hè nằm ngoài hai học kỳ, menu xem lịch vẫn xem được khoảng ngày này nhưng không sinh tiết học thường kỳ.
 6. Bản nháp được kiểm tra nội bộ và với lịch đã công bố liên quan; hai bản nháp thay thế nhau không tự động chặn lẫn nhau. Phạm vi phiên bản được ghi rõ và recheck khi publish.
 
 Quy tắc mềm: thiếu/thừa số tiết môn, tải GV, nhiều tiết liên tiếp, khoảng trống lịch. Đánh dấu warning riêng; thiếu dữ liệu bắt buộc có thể thành lỗi cứng theo chính sách chốt với nhóm.
@@ -146,17 +158,14 @@ Màn hình chung có bộ lọc năm học/học kỳ, tìm kiếm, phân trang,
 
 Timetable hiển thị lưới thứ/tiết, chọn tuần/lớp/GV/phòng, badge version/status, panel chi tiết ô, danh sách conflict có liên kết tới ô, nút lưu/gửi duyệt/công bố theo quyền. Cảnh báo khi đổi trang còn dữ liệu chưa lưu. Dạy thay và kiểm tra có calendar/list và form chọn tài nguyên chỉ hiển thị candidate phù hợp; server vẫn revalidate.
 
-## 10. Phối hợp TV1, TV3, TV5
+## 10. Code First với .NET 8 và EF Core 8
 
-Chưa xác minh phạm vi từng thành viên ngoài TV2; bảng sau là hợp đồng đề xuất, phải xác nhận chủ sở hữu bước 0.
+- Dùng solution `backend/SOMS.sln`. API và các project hiện có target `net8.0`, với EF Core và Npgsql provider `8.0.11`. Đăng ký EF mapping vào `SomsDbContext` hiện có.
+- Bắt đầu từ code C#: entity, cấu hình Fluent API, truy vấn theo trường, DTO và controller. Ánh xạ đúng bảng/cột, kiểu, nullable, khóa và ràng buộc của Supabase hiện tại. Luồng đọc lớp đầu tiên dùng `classes`, `academic_years` và `grade_levels`.
+- Tách việc phát triển khỏi việc chuẩn bị dữ liệu demo. Kiểm tra danh sách lớp với dữ liệu có sẵn hoặc danh sách rỗng. Đến lúc thử tạo lớp mới cần một năm học và một khối hợp lệ trong trường thử. Chuẩn bị dữ liệu giáo viên, môn, phòng và hai học kỳ khi đến chức năng tương ứng.
+- Việc thêm EF mapping cho bảng có sẵn không yêu cầu áp migration lên Supabase. Khi cần đổi schema, dùng EF Core migration sau khi thiết lập baseline của schema hiện hữu và kiểm tra lịch sử migration của môi trường đích. Rà SQL sinh ra để tránh tạo lại hoặc xóa bảng hiện có, rồi thử upgrade và rollback trên PostgreSQL tách biệt.
+- Chạy `dotnet build backend/SOMS.sln` và `dotnet test backend/SOMS.sln` sau mỗi đợt backend. Thử endpoint bằng tài khoản Giáo vụ demo đã có, kiểm tra quyền và phạm vi trường từ phía server.
 
-| Bên | Nội dung cần thống nhất | Đầu ra |
-|---|---|---|
-| TV1 | Auth/JWT, school context, permission seed, membership/thu hồi quyền, người duyệt, audit chung | Policy matrix, school-scoped identity contract và tài khoản demo |
-| TV3 | Staff/chuyên môn, nghỉ phép, lịch GV, điểm danh, dữ liệu kiểm tra so với dữ liệu điểm | Staff/leave contract; session ID dùng chung; quy tắc khóa ca đã điểm danh |
-| TV5 | Consumer lịch HS/PH và/hoặc nguồn phòng/thông báo theo phân công thực tế | DTO lịch công bố, enrollment hiệu lực, room availability, sự kiện thay đổi |
-
-Nếu phòng/workflow/thông báo do người khác sở hữu thì chuyển hợp đồng đó đúng thành viên; TV2 vẫn phụ trách adapter và kiểm thử tích hợp. Các sự kiện đề xuất: TimetablePublished, SubstitutionAssigned/Cancelled, ExamPublished/Cancelled, StudentClassChanged; có eventId, SchoolId, entityId, revision, occurredAt và xử lý lặp an toàn. Lỗi gửi thông báo không được làm mất lịch đã lưu; dùng outbox nếu nhóm có hạ tầng hoặc cơ chế retry được chốt.
 
 ## 11. Kế hoạch kiểm thử
 
@@ -165,7 +174,7 @@ Nếu phòng/workflow/thông báo do người khác sở hữu thì chuyển h�
 | Unit Academic | Mã trùng/chuẩn hóa, ngày sai, capacity, chuyển lớp giữ lịch sử, hiệu lực assignment/GVCN, tài nguyên khác trường |
 | Unit Scheduling | Trùng GV/lớp/phòng; khoảng tiếp giáp; nhiều tiết; khác ngày; kỳ/hiệu lực không giao nhau; ngày nghỉ; sửa loại bản thân; batch tự trùng; draft vs published |
 | Unit Substitution/Exam | GV thay nghỉ/bận/sai chuyên môn; đổi/hủy đúng session; khôi phục không hợp lệ; exam vs lesson/substitution; nhiều lớp/giám thị |
-| Integration PostgreSQL | Apply baseline+migration trên DB thử; FK/unique/check/exclusion; rollback; optimistic concurrency; hai request đặt cùng slot; dữ liệu tồn tại sau restart |
+| Integration PostgreSQL | Kiểm tra mapping và áp migration phần bổ sung trên DB thử khi có thay đổi schema; FK/unique/check/exclusion; rollback; optimistic concurrency; hai request đặt cùng slot; dữ liệu tồn tại sau restart |
 | Integration Security | 401, thiếu quyền 403, ID khác trường, role bị thu hồi, membership hết hạn; HS/PH không đọc draft hoặc người khác; RLS nếu áp dụng |
 | Integration Workflow | Chặn publish chưa duyệt/còn conflict; recheck sau khi approved; publish lặp; thay phiên bản giữ lịch sử; audit/outbox sau commit |
 | UI | Form và lỗi API, lọc/phân trang, nút theo quyền, conflict panel, loading/empty/error, keyboard cơ bản |
@@ -173,32 +182,69 @@ Nếu phòng/workflow/thông báo do người khác sở hữu thì chuyển h�
 
 Dùng xUnit/Moq hiện có; WebApplicationFactory cho API và PostgreSQL test riêng (container nếu môi trường hỗ trợ). Không dùng EF InMemory để kết luận constraint/transaction PostgreSQL. Đề xuất Vitest/Testing Library cho UI và Playwright cho E2E sau khi kiểm tra tương thích với package hiện có. CI chạy backend build/tests, frontend typecheck/build/tests và integration/E2E ở môi trường có DB test; không kết nối DB dùng chung để reset/seed test.
 
-## 12. Lộ trình 20 ngày làm việc cho một TV2
+## 12. Lộ trình đề xuất theo ngày làm việc
 
-Ước lượng sau khi chốt hợp đồng nhóm; chưa gắn ngày lịch vì chưa có deadline. Cộng 3–5 ngày dự phòng nếu schema/identity khác giả định hoặc tích hợp nhóm chậm. Mỗi đợt gồm UI, API, validation, quyền và test tương ứng.
+Ngày 1 là ngày bắt đầu triển khai chức năng, vì chạy local và đăng nhập đã xong. Mốc 20 ngày là ước lượng để nhóm điều chỉnh theo hạn nộp.
 
-| Mốc | Ngày | Công việc | Điều kiện hoàn tất |
-|---|---|---|---|
-| M0 | 1–2 | Hoàn thiện mapping từ metadata đã đọc, hợp đồng và chiến lược baseline/migration | Không còn mơ hồ bảng/owner/identity/lifecycle |
-| M1 | 3–4 | School context, entities nền, migration thử, permission mapping, UI layout/API client | DB thử dựng được, quyền/scope test đạt |
-| M2 | 5–7 | Học sinh, lớp/enrollment/chuyển lớp, môn/chương trình | Luồng quản lý dữ liệu lưu thật; test nghiệp vụ đạt |
-| M3 | 8–9 | Phân công GV/GVCN, staff/room adapters | UI phân công dùng dữ liệu thật; hiệu lực và lịch sử đúng |
-| M4 | 10–13 | Timetable draft, materialization, conflict engine, reservation/concurrency | Xếp lịch được; chặn 3 loại trùng cả khi ghi đồng thời |
-| M5 | 14–15 | Submit/approve/reject/publish, audit, portal contract | Chỉ lịch được duyệt/công bố xuất hiện cho consumer |
-| M6 | 16–17 | Dạy thay và lịch kiểm tra tích hợp cùng conflict engine | Không tạo trùng, đúng ngoại lệ ngày, cập nhật portal |
-| M7 | 18–20 | E2E, security/integration, sửa lỗi, seed demo, tài liệu/runbook và bàn giao | Toàn bộ checklist bàn giao đạt, demo chạy lại được |
+| Ngày | Làm gì | Nghiệm thu cuối ngày hoặc cuối đợt |
+|---|---|---|
+| **1** | Kiểm tra quyền và membership của tài khoản Giáo vụ đã có. Ánh xạ lớp, khối, năm học trong EF Core 8. Làm API ngữ cảnh và đọc lớp, kể cả khi dữ liệu rỗng. | GET trả danh sách thật hoặc danh sách rỗng cho trường hiện tại. |
+| **2** | Thêm route/menu **Lớp học**, bảng danh sách, bộ lọc năm học và trạng thái trống/lỗi. | Vào màn hình từ dashboard, tải lại vẫn đúng dữ liệu. |
+| **3–4** | Làm form tạo/sửa lớp, kiểm tra mã trùng, FK cùng trường, sức chứa và quyền. Thử lưu khi thiếu danh mục. | Tạo lớp rồi tải lại vẫn thấy. Mã trùng, khối/năm học sai trường và user thiếu quyền bị chặn. |
+| **5** | Danh sách, tạo và sửa hồ sơ học sinh. Map trạng thái theo CHECK của `students`. | Tạo được học sinh trong trường demo. Mã trùng báo rõ. |
+| **6** | Ghi danh và chuyển lớp trong transaction. Kiểm tra sức chứa, hiệu lực và lịch sử. | Một HS chuyển lớp, lớp cũ còn lịch sử và chỉ có một enrollment active. |
+| **7** | Quản lý môn và thống nhất cách lưu chương trình lớp/kỳ nếu nhóm cần. | Có môn dùng được khi phân công, môn ngừng hoạt động được xử lý đúng. |
+| **8–9** | Làm phân công GV và GVCN. Dùng staff/phòng hiện có. Thực hiện lưu lịch sử GVCN theo phương án đã chốt. | Có lớp, môn, GV và phòng sẵn sàng xếp lịch. Chặn GV sai trường hoặc không hợp lệ. |
+| **10** | Tạo/nhân bản phiên bản lịch nháp và màn hình danh sách phiên bản. | Bản sao có version riêng và mở được để sửa. |
+| **11** | Thêm/sửa/xóa tiết bằng form, xem theo lớp/GV/phòng. | Lưu slot thật và tải lại hiển thị đúng thứ/tiết/phòng. |
+| **12–13** | Kiểm tra trùng theo giờ thực cho lớp, GV, phòng. Kiểm tra lại khi ghi và thử hai yêu cầu đồng thời. | Báo đúng tài nguyên và thời gian trùng, chỉ một yêu cầu chiếm cùng chỗ thành công. |
+| **14–15** | Gửi duyệt, từ chối, công bố, thay bản công bố. Ghép API đọc lịch cho portal. | Chỉ lịch công bố xuất hiện cho người xem đúng phạm vi, việc thay phiên bản giữ được lịch sử theo quyết định của nhóm. |
+| **16** | Tạo/hủy dạy thay theo slot + ngày, dùng nguồn nghỉ và kiểm tra xung đột. | Chặn GV bận/nghỉ và thấy đúng GV thay trên ngày đã chọn. |
+| **17** | Tạo/công bố/hủy lịch kiểm tra, dùng chung kiểm tra trùng lịch. | Ca trùng lịch học hoặc dạy thay bị chặn. |
+| **18** | Ghép portal và chạy kịch bản demo với nhóm. | Chạy từ tạo lớp đến xem lịch công bố và kiểm tra được ngày có dạy thay. |
+| **19** | Sửa lỗi từ buổi ghép, thử quyền sai trường, bản ghi trống, lỗi kết nối và tải lại UI. | Có kết quả kiểm thử và danh sách lỗi còn tồn cho buổi nộp. |
+| **20** | Chạy thử lần cuối, cập nhật hướng dẫn chạy và phân vai trình bày. | Thành viên khác chạy được demo với dữ liệu đã chuẩn bị. |
 
-Thứ tự phụ thuộc: M0 → M1 → M2/M3 → M4 → M5 → M6 → M7. Không trì hoãn test đến M7; M7 dành cho tích hợp tổng thể và ổn định. Nếu thiếu thời gian, cắt kéo thả/auto-generation/export nâng cao; giữ toàn bộ chức năng tối thiểu được giao.
+Các phần nên có trong bản nộp là luồng dữ liệu nền, lập/công bố lịch, kiểm tra trùng, dạy thay và lịch kiểm tra. Nếu lịch nộp gấp, ưu tiên hoàn thành luồng này bằng form cơ bản. Để kéo thả, tự xếp lịch và xuất nâng cao sau khi luồng demo chạy ổn.
+
+### Theo dõi triển khai trên nhánh `hau`
+
+| Mốc | Phần có mã nguồn | Còn thiếu để nghiệm thu |
+|---|---|---|
+| M0 | [Mapping, metadata runtime và baseline PostgreSQL](academic/M0-postgres-verification.md). Đã khôi phục schema ứng dụng 78 bảng, thử áp và hoàn tác migration. | Đã áp hai migration lên Supabase nhóm ngày 19/11/2026. [Bàn giao hosted](academic/hosted-handoff.md). |
+| M1 · Ngày 1–4 | Context theo quyền và múi giờ trường, API danh mục, bảng và form lớp. Đã kiểm tra API và UI trên PostgreSQL thử. | Demo nhóm khi cần. |
+| M2 · Ngày 5–7 | Hồ sơ, liên kết profile, lưu trữ, sĩ số, ghi danh/chuyển lớp và danh mục môn. Đã kiểm tra tranh chỗ cuối và rollback khi lỗi audit. | Quy ước hiệu lực ghi trong runbook. |
+| M3 · Ngày 8–9 | Chương trình lớp/kỳ, phân công GV, lịch sử GVCN và tra cứu giáo viên. Đã thử API và UI. | Quy tắc chuyên môn/định mức có thể mở rộng khi có dữ liệu. |
+| M4 · Ngày 10–13 | Tạo/nhân bản lịch, chỉnh ô, lọc theo lớp/GV/phòng, gợi ý tiết/phòng, phát hiện chồng giờ và tranh ghi. | Đã thử trên DB riêng. |
+| M5 · Ngày 14–15 | Gửi duyệt, duyệt/từ chối và công bố theo revision; audit, hiệu lực bản cũ và API lịch theo quyền portal. | Đã thử luồng Giáo vụ, BGH và học sinh. |
+| M6 · Ngày 16–17 | Dạy thay/hủy, lịch kiểm tra tạo/sửa/công bố/hủy, lịch thực tế hiển thị trên portal. | MVP một lớp mỗi ca. Giám thị và lịch ngày lễ chưa có dữ liệu. |
+| M7 · Ngày 18–20 | Có kiểm thử HTTP 401, integration PostgreSQL, seed riêng và smoke Chrome xuyên suốt. [Runbook](academic/README.md) · [Bằng chứng](academic/M1-M2-verification.md). | Kiểm chứng hosted đã đạt smoke SQL và API. [Bàn giao hosted](academic/hosted-handoff.md). |
+
+Các thao tác lớp và học sinh dùng revision PostgreSQL qua `xmin`. Cả hai nhóm API tra quyền tương ứng trực tiếp từ role và membership còn hiệu lực trước khi đọc hoặc ghi.
+
+```mermaid
+erDiagram
+    schools ||--o{ academic_years : school_id
+    schools ||--o{ grade_levels : school_id
+    schools ||--o{ classes : school_id
+    schools ||--o{ students : school_id
+    academic_years ||--o{ semesters : academic_year_id
+    academic_years ||--o{ classes : academic_year_id
+    grade_levels ||--o{ classes : grade_level_id
+    profiles |o--o{ students : user_id
+    classes ||--o{ class_enrollments : class_id
+    students ||--o{ class_enrollments : student_id
+```
 
 ## 13. Kịch bản demo end-to-end
 
-Dữ liệu seed giả, idempotent và tách môi trường: 2 trường để test scope; 1 năm học, 2 học kỳ; tối thiểu 2 lớp, 3 môn, 4 GV, 3 phòng; 10–20 HS; tài khoản Giáo vụ, người duyệt, GV, HS/PH. Không ghi mật khẩu/token vào git.
+Dữ liệu seed giả, idempotent và tách môi trường: 2 trường để test scope; 1 năm học, 2 học kỳ và khoảng nghỉ hè để kiểm tra lịch trống; tối thiểu 2 lớp, 3 môn, 4 GV, 3 phòng; 10–20 HS; tài khoản Giáo vụ, người duyệt, GV, HS/PH. Không ghi mật khẩu/token vào git.
 
 1. Đăng nhập Giáo vụ → chọn trường/năm học → tạo HS → kiểm tra mã trùng bị chặn.
 2. Tạo lớp, xếp HS, chuyển một HS và chứng minh lịch sử/sĩ số đúng; lớp đầy không nhận thêm.
 3. Tạo môn/chương trình, phân công GV và GVCN; thử GV không hợp lệ bị từ chối.
 4. Tạo lịch nháp, thêm các ô hợp lệ; cố ý tạo trùng GV, lớp, phòng và xem từng lỗi.
-5. Sửa hết lỗi → gửi duyệt → tài khoản quản lý duyệt → Giáo vụ công bố. HS không xem được trước công bố, xem đúng sau công bố.
+5. Sửa hết lỗi → gửi duyệt → tài khoản BGH duyệt → BGH công bố. HS không xem được trước công bố, xem đúng sau công bố.
 6. Bố trí GV thay cho một ngày; GV đang bận bị chặn; chọn GV rảnh thành công. Mẫu lịch tuần giữ nguyên, lịch GV/HS ngày đó đổi đúng.
 7. Tạo lịch kiểm tra trùng giờ học/phòng/GV bị chặn; đổi giờ hợp lệ và công bố; portal thấy lịch mới.
 8. Thử sửa URL/ID tài nguyên trường khác, user thiếu quyền và membership hết hạn đều bị chặn.
@@ -206,10 +252,9 @@ Dữ liệu seed giả, idempotent và tách môi trường: 2 trường để t
 
 Ghi expected/actual cho từng bước, ảnh/video nếu cần, script seed và reset giới hạn môi trường demo. Không reset Supabase dùng chung.
 
-## 14. Checklist bàn giao và Definition of Done
+## 14. Checklist bàn giao
 
-- [ ] Hoàn thiện và xác nhận owner cho mapping dựa trên schema Supabase đã đọc.
-- [ ] Entity/mapping/migration/baseline, SQL diff và rollback đã thử trên PostgreSQL tách biệt.
+- [ ] EF mapping đã được chạy thử. Nếu đổi schema, baseline, SQL migration và rollback đã được thử trên PostgreSQL tách biệt.
 - [ ] AA-01 đến AA-12 có UI/API nối DB thật; đủ loading/empty/error/validation.
 - [ ] Kiểm tra GV/lớp/phòng và tranh chấp đồng thời dùng chung cho lịch học, dạy thay, kiểm tra.
 - [ ] Quyền chi tiết, scope trường, membership hiệu lực/thu hồi, scope GV/HS/PH đã kiểm thử.
@@ -217,9 +262,9 @@ Ghi expected/actual cho từng bước, ảnh/video nếu cần, script seed và
 - [ ] Backend build/tests, frontend build/UI tests, integration/E2E đạt; ghi kết quả thực tế và lỗi còn lại.
 - [ ] Swagger/OpenAPI và API examples/collection hoàn chỉnh.
 - [ ] README chạy local; cấu hình env mẫu không có secret; hướng dẫn migrate/seed/demo/troubleshoot.
-- [ ] ERD, schema mapping, rule conflict, permission matrix, contract TV1/TV3/TV5 và demo checklist bàn giao.
+- [ ] ERD, schema mapping, rule conflict, ma trận quyền, tài liệu API tích hợp và kịch bản demo.
 - [ ] Từng PR có phạm vi rõ, migration ảnh hưởng gì và bằng chứng validation; không commit/push tự động chỉ từ kế hoạch này.
 
-Rủi ro trọng tâm: quy tắc hiệu lực, lịch sử và chống trùng theo giờ chưa được schema hiện tại bao phủ đầy đủ; truy vấn seed/fallback ở StudentPortal có thể che lỗi tích hợp; quyền hiện tại chưa đủ school scope; hai luồng migration có thể lệch; timetable/exam/substitution dùng cơ chế giữ chỗ khác nhau dễ tạo xung đột. Xử lý tương ứng ở M0, M1 và M4 trước khi công bố dữ liệu thật.
+Rủi ro trọng tâm: quy tắc hiệu lực, lịch sử và chống trùng theo giờ chưa được schema hiện tại bao phủ đầy đủ; truy vấn seed/fallback ở StudentPortal có thể che lỗi tích hợp; quyền hiện tại chưa đủ school scope; hai luồng migration có thể lệch; timetable/exam/substitution dùng cơ chế giữ chỗ khác nhau dễ tạo xung đột. Kiểm tra mapping và quyền ngay ở đợt Quản lý lớp. Dùng chung cơ chế kiểm tra và giữ chỗ trước khi công bố lịch.
 
 Tài liệu tham khảo kết nối: https://supabase.com/docs/guides/ai-tools/mcp . Kế hoạch này chưa thực thi thay đổi schema hoặc triển khai chức năng.

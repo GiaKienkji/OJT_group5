@@ -34,3 +34,6 @@ dist/
 frontend/dist/
 .npm/
 .eslintcache
+
+# Supabase CLI local metadata
+/supabase/.temp/

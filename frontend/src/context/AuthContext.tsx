@@ -20,6 +20,26 @@ const TOKEN_KEY = 'soms_access_token';
 const REFRESH_KEY = 'soms_refresh_token';
 const USER_KEY = 'soms_user_profile';
 
+function restoredDashboard(user: CurrentUser) {
+  if (window.location.pathname === '/academic/events' && (user.permissions.includes('scheduling.manage') || user.permissions.includes('exams.manage')))
+    return '/academic/events';
+  if (window.location.pathname === '/teacher/schedule' && user.permissions.includes('teaching_schedule.view'))
+    return '/teacher/schedule';
+  if (window.location.pathname === '/parent/schedule' && user.permissions.includes('parent_academics.view'))
+    return '/parent/schedule';
+  if (window.location.pathname === '/academic/timetables' && user.permissions.includes('timetables.draft'))
+    return '/academic/timetables';
+  if (window.location.pathname === '/management/timetables' && user.permissions.includes('timetables.approve'))
+    return '/management/timetables';
+  if (window.location.pathname === '/academic/subjects' && user.permissions.includes('subjects.manage'))
+    return '/academic/subjects';
+  if (window.location.pathname === '/academic/students' && user.permissions.includes('students.manage'))
+    return '/academic/students';
+  return window.location.pathname === '/academic/classes' && user.permissions.includes('classes.manage')
+    ? '/academic/classes'
+    : user.defaultDashboard;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<CurrentUser | null>(() => {
     const saved = localStorage.getItem(USER_KEY);
@@ -57,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const freshUser: CurrentUser = await res.json();
           setUser(freshUser);
           localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
-          setCurrentDashboard(freshUser.defaultDashboard);
+          setCurrentDashboard(restoredDashboard(freshUser));
         } else if (res.status === 401) {
           // Attempt refresh
           const refreshToken = localStorage.getItem(REFRESH_KEY);
@@ -74,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               localStorage.setItem(REFRESH_KEY, data.refreshToken);
               localStorage.setItem(USER_KEY, JSON.stringify(data.user));
               setUser(data.user);
-              setCurrentDashboard(data.user.defaultDashboard);
+              setCurrentDashboard(restoredDashboard(data.user));
             } else {
               handleLogoutCleanup();
             }

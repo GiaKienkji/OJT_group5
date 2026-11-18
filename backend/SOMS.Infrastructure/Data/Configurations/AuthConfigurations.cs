@@ -75,6 +75,7 @@ public class SchoolConfiguration : IEntityTypeConfiguration<School>
         builder.Property(s => s.Email).HasColumnName("email");
         builder.Property(s => s.Phone).HasColumnName("phone");
         builder.Property(s => s.Address).HasColumnName("address");
+        builder.Property(s => s.Timezone).HasColumnName("timezone");
         builder.Property(s => s.Status).HasColumnName("status");
     }
 }

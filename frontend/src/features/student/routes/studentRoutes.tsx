@@ -3,10 +3,9 @@ import { StudentLayout } from '../layouts/StudentLayout';
 import { StudentAnnouncementsProvider } from '../context/StudentAnnouncementsContext';
 import { StudentDashboardPage } from '../pages/StudentDashboardPage';
 import { StudentProfilePage } from '../pages/StudentProfilePage';
-import { StudentTimetablePage } from '../pages/StudentTimetablePage';
+import { PublishedSchedulePage } from '../../academic/pages/PublishedSchedulePage';
 import { StudentAttendancePage } from '../pages/StudentAttendancePage';
 import { StudentGradesPage } from '../pages/StudentGradesPage';
-import { StudentExamsPage } from '../pages/StudentExamsPage';
 import { StudentAnnouncementsPage } from '../pages/StudentAnnouncementsPage';
 import { StudentFeesPage } from '../pages/StudentFeesPage';
 import { StudentSupportPage } from '../pages/StudentSupportPage';
@@ -92,7 +91,7 @@ export const StudentRoutes: React.FC = () => {
         return <StudentProfilePage />;
 
       case '/student/timetable':
-        return <StudentTimetablePage />;
+        return <PublishedSchedulePage />;
 
       case '/student/attendance':
         return <StudentAttendancePage />;
@@ -101,7 +100,7 @@ export const StudentRoutes: React.FC = () => {
         return <StudentGradesPage />;
 
       case '/student/exams':
-        return <StudentExamsPage />;
+        return <PublishedSchedulePage key="student-exams" examsOnly />;
 
       case '/student/announcements':
         return <StudentAnnouncementsPage />;

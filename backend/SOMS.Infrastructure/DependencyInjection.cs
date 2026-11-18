@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IStudentPortalService, StudentPortalService>();
+        services.AddScoped<AcademicScheduleStore>();
 
         // Register Permission Authorization Handler
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();

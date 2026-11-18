@@ -3,6 +3,13 @@ import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { StudentRoutes } from './features/student/routes/studentRoutes';
+import { ClassesPage } from './features/academic/pages/ClassesPage';
+import { SubjectsPage } from './features/academic/pages/SubjectsPage';
+import { TimetablesPage } from './features/academic/pages/TimetablesPage';
+import { PublishedSchedulePage } from './features/academic/pages/PublishedSchedulePage';
+import { AcademicEventsPage } from './features/academic/pages/AcademicEventsPage';
+import { AcademicDashboardSummary } from './features/academic/pages/AcademicDashboardSummary';
+import { StudentsPage } from './features/academic/pages/StudentsPage';
 import { 
   Users, 
   Settings, 
@@ -13,13 +20,12 @@ import {
   Wrench, 
   GraduationCap, 
   Award,
-  BookOpen,
   Clock,
   ShieldCheck
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { user, isAuthenticated, isLoading, currentDashboard } = useAuth();
+  const { user, isAuthenticated, isLoading, currentDashboard, setCurrentDashboard, hasPermission } = useAuth();
 
   if (isLoading) {
     return (
@@ -96,6 +102,8 @@ export const App: React.FC = () => {
           title="Bảng điều hành Ban giám hiệu"
           description="Giám sát toàn diện vận hành trường học, phê duyệt thời khóa biểu, lịch giảng dạy và báo cáo thống kê."
         >
+          {hasPermission('timetables.approve') && <button className="mb-4 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white"
+            onClick={() => setCurrentDashboard('/management/timetables')}>Duyệt thời khóa biểu</button>}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
               <div className="flex items-center gap-3 mb-3 text-blue-600">
@@ -122,6 +130,49 @@ export const App: React.FC = () => {
         </DashboardLayout>
       );
 
+    case '/academic/events':
+      return <DashboardLayout roleCode="academic_affairs" roleName="Giáo vụ" title="Dạy thay và kiểm tra"
+        description="Quản lý ca theo lịch công bố.">
+        <button className="mb-4 font-semibold underline" onClick={() => setCurrentDashboard('/academic/dashboard')}>Về trang Giáo vụ</button>
+        <AcademicEventsPage />
+      </DashboardLayout>;
+
+    case '/academic/timetables':
+    case '/management/timetables': {
+      const isManagement = currentDashboard.startsWith('/management');
+      return (
+        <DashboardLayout roleCode={isManagement ? 'school_management' : 'academic_affairs'}
+          roleName={isManagement ? 'Quản lý trường' : 'Giáo vụ'} title="Thời khóa biểu" description="Quản lý các phiên bản theo học kỳ.">
+          <button className="mb-4 font-semibold underline" onClick={() => setCurrentDashboard(isManagement ? '/management/dashboard' : '/academic/dashboard')}>Về tổng quan</button>
+          <TimetablesPage />
+        </DashboardLayout>
+      );
+    }
+
+    case '/academic/subjects':
+      return (
+        <DashboardLayout roleCode="academic_affairs" roleName="Giáo vụ" title="Môn học" description="Quản lý danh mục môn học theo trường.">
+          <button className="mb-4 font-semibold underline" onClick={() => setCurrentDashboard('/academic/dashboard')}>Về trang Giáo vụ</button>
+          <SubjectsPage />
+        </DashboardLayout>
+      );
+
+    case '/academic/students':
+      return (
+        <DashboardLayout roleCode="academic_affairs" roleName="Giáo vụ" title="Học sinh" description="Quản lý hồ sơ học sinh theo trường.">
+          <button className="mb-4 font-semibold underline" onClick={() => setCurrentDashboard('/academic/dashboard')}>Về trang Giáo vụ</button>
+          <StudentsPage />
+        </DashboardLayout>
+      );
+
+    case '/academic/classes':
+      return (
+        <DashboardLayout roleCode="academic_affairs" roleName="Giáo vụ" title="Lớp học" description="Quản lý lớp theo trường và năm học.">
+          <button className="mb-4 font-semibold underline" onClick={() => setCurrentDashboard('/academic/dashboard')}>Về trang Giáo vụ</button>
+          <ClassesPage />
+        </DashboardLayout>
+      );
+
     case '/academic/dashboard':
       return (
         <DashboardLayout
@@ -130,23 +181,22 @@ export const App: React.FC = () => {
           title="Không gian làm việc Giáo vụ"
           description="Quản lý hồ sơ học sinh, phân lớp, lập dự thảo thời khóa biểu và lịch thi."
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <BookOpen className="w-6 h-6 text-emerald-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Thời khóa biểu</h3>
-              <p className="text-sm text-slate-500">Xếp lịch, kiểm tra trùng phòng, giáo viên và xuất bản TKB chính thức.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <Users className="w-6 h-6 text-blue-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Hồ sơ Học sinh</h3>
-              <p className="text-sm text-slate-500">Tiếp nhận, phân bổ lớp học, chuyển lớp và quản lý danh sách học sinh.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <Calendar className="w-6 h-6 text-amber-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Kỳ thi &amp; Đánh giá</h3>
-              <p className="text-sm text-slate-500">Lên lịch thi giữa kỳ, cuối kỳ, phân phòng thi và giám thị coi thi.</p>
-            </div>
-          </div>
+          {hasPermission('classes.manage') && (
+            <button className="mb-4 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" onClick={() => setCurrentDashboard('/academic/classes')}>Lớp học</button>
+          )}
+          {(hasPermission('scheduling.manage') || hasPermission('exams.manage')) && (
+            <button className="mb-4 ml-2 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" onClick={() => setCurrentDashboard('/academic/events')}>Dạy thay và kiểm tra</button>
+          )}
+          {hasPermission('timetables.draft') && (
+            <button className="mb-4 ml-2 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" onClick={() => setCurrentDashboard('/academic/timetables')}>Thời khóa biểu</button>
+          )}
+          {hasPermission('subjects.manage') && (
+            <button className="mb-4 ml-2 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" onClick={() => setCurrentDashboard('/academic/subjects')}>Môn học</button>
+          )}
+          {hasPermission('students.manage') && (
+            <button className="mb-4 ml-2 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white" onClick={() => setCurrentDashboard('/academic/students')}>Học sinh</button>
+          )}
+          {hasPermission('academic.manage') && <AcademicDashboardSummary />}
         </DashboardLayout>
       );
 
@@ -173,6 +223,16 @@ export const App: React.FC = () => {
         </DashboardLayout>
       );
 
+    case '/teacher/schedule':
+    case '/parent/schedule': {
+      const isParent = currentDashboard.startsWith('/parent');
+      return <DashboardLayout roleCode={isParent ? 'parent' : 'teacher'} roleName={isParent ? 'Phụ huynh' : 'Giáo viên'}
+        title="Lịch đã công bố" description="Tra cứu lịch theo ngày.">
+        <button className="mb-4 font-semibold underline" onClick={() => setCurrentDashboard(isParent ? '/parent/dashboard' : '/teacher/dashboard')}>Về tổng quan</button>
+        <PublishedSchedulePage />
+      </DashboardLayout>;
+    }
+
     case '/teacher/dashboard':
       return (
         <DashboardLayout
@@ -181,6 +241,8 @@ export const App: React.FC = () => {
           title="Không gian Giáo viên Giảng dạy"
           description="Lịch dạy cá nhân, ghi nhận chuyên cần, nhập điểm bài kiểm tra và công tác chủ nhiệm lớp."
         >
+          {hasPermission('teaching_schedule.view') && <button className="mb-4 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white"
+            onClick={() => setCurrentDashboard('/teacher/schedule')}>Lịch đã công bố</button>}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
               <Calendar className="w-6 h-6 text-teal-600 mb-3" />
@@ -288,6 +350,8 @@ export const App: React.FC = () => {
           title="Cổng thông tin Phụ huynh"
           description="Theo dõi quá trình học tập, chuyên cần của con em, nộp đơn xin phép nghỉ và tra cứu học phí."
         >
+          {hasPermission('parent_academics.view') && <button className="mb-4 rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white"
+            onClick={() => setCurrentDashboard('/parent/schedule')}>Lịch đã công bố</button>}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
               <Award className="w-6 h-6 text-purple-600 mb-3" />
