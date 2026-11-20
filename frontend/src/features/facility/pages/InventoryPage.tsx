@@ -48,12 +48,12 @@ export const InventoryPage: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [invs, asts, rms] = await Promise.all([
+      const [invRes, asts, rms] = await Promise.all([
         facilityApi.getInventory(),
         facilityApi.getAssets(),
         facilityApi.getRooms(),
       ]);
-      setList(invs);
+      setList(invRes.sessions || []);
       setAssets(asts);
       setRooms(rms);
     } catch (e: unknown) {
@@ -74,8 +74,8 @@ export const InventoryPage: React.FC = () => {
         assetId: a.id,
         assetCode: a.code,
         assetName: a.name,
-        originalRoomName: a.room_name || 'Chưa xếp phòng',
-        observedRoomId: a.room_id || '',
+        originalRoomName: a.roomName || 'Chưa xếp phòng',
+        observedRoomId: a.roomId || '',
         condition: a.condition || 'Tốt',
         status: a.status || 'working',
         present: true,

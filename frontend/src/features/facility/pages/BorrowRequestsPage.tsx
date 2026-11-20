@@ -160,9 +160,9 @@ export const BorrowRequestsPage: React.FC = () => {
                 {list.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
                     <Td className="font-semibold text-slate-900">{req.id.slice(0, 8)}...</Td>
-                    <Td className="text-xs text-slate-600">{req.asset_id.slice(0, 8)}...</Td>
+                    <Td className="text-xs text-slate-600">{req.assetCode ? `${req.assetCode} - ${req.assetName}` : `${req.assetId.slice(0, 8)}...`}</Td>
                     <Td>{req.purpose}</Td>
-                    <Td>{req.due_at ? fmtDateTime(req.due_at) : '—'}</Td>
+                    <Td>{req.dueAt ? fmtDateTime(req.dueAt) : '—'}</Td>
                     <Td>
                       <Badge tone={statusTone(req.status)}>{statusLabel(req.status)}</Badge>
                     </Td>

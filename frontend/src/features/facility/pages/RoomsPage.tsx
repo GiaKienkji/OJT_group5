@@ -55,7 +55,7 @@ export const RoomsPage: React.FC = () => {
   };
 
   const reset = () => { setEditing(null); setCode(''); setName(''); setRoomType('classroom'); setCapacity(''); setStatus('available'); setOpen(true); };
-  const startEdit = (r: Room) => { setEditing(r); setCode(r.code); setName(r.name || ''); setRoomType(r.room_type); setCapacity(String(r.capacity)); setStatus(r.status); setOpen(true); };
+  const startEdit = (r: Room) => { setEditing(r); setCode(r.code); setName(r.name || ''); setRoomType(r.roomType); setCapacity(String(r.capacity)); setStatus(r.status); setOpen(true); };
 
   return (
     <div>
@@ -76,7 +76,7 @@ export const RoomsPage: React.FC = () => {
                   <tr key={r.id} className="hover:bg-slate-50">
                     <Td className="font-semibold text-slate-900">{r.code}</Td>
                     <Td>{r.name}</Td>
-                    <Td>{r.room_type}</Td>
+                    <Td>{r.roomType}</Td>
                     <Td>{r.capacity}</Td>
                     <Td><Badge tone={statusTone(r.status)}>{statusLabel(r.status)}</Badge></Td>
                     <Td><SecondaryButton size="sm" onClick={() => startEdit(r)}>Sửa</SecondaryButton></Td>

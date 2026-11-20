@@ -57,7 +57,7 @@ export const AssetsPage: React.FC = () => {
   };
 
   const reset = () => { setEditing(null); setCode(''); setName(''); setCategory(''); setSerial(''); setRoomId(''); setStatus('working'); setCondition(''); setOpen(true); };
-  const startEdit = (a: Asset) => { setEditing(a); setCode(a.code); setName(a.name); setCategory(a.category); setSerial(a.serial_number || ''); setRoomId(a.room_id || ''); setStatus(a.status); setCondition(a.condition || ''); setOpen(true); };
+  const startEdit = (a: Asset) => { setEditing(a); setCode(a.code); setName(a.name); setCategory(a.category); setSerial(a.serialNumber || ''); setRoomId(a.roomId || ''); setStatus(a.status); setCondition(a.condition || ''); setOpen(true); };
 
   const statuses = ['working', 'damaged', 'maintenance', 'retired', 'lost'] as const;
 
@@ -73,7 +73,7 @@ export const AssetsPage: React.FC = () => {
           <TableWrap>
             <table className="min-w-full">
               <thead className="bg-slate-50">
-                <tr><Th>Mã tài sản</Th><Th>Tên</Th><Th>Loại</Th><Th>Số렬</Th><Th>Phòng</Th><Th>Trạng thái</Th><Th>Tình trạng</Th><Th>Hành động</Th></tr>
+                <tr><Th>Mã tài sản</Th><Th>Tên</Th><Th>Loại</Th><Th>Serial</Th><Th>Phòng</Th><Th>Trạng thái</Th><Th>Tình trạng</Th><Th>Hành động</Th></tr>
               </thead>
               <tbody>
                 {list.map((a) => (
@@ -81,8 +81,8 @@ export const AssetsPage: React.FC = () => {
                     <Td className="font-semibold text-slate-900">{a.code}</Td>
                     <Td>{a.name}</Td>
                     <Td>{a.category}</Td>
-                    <Td className="text-xs text-slate-500">{a.serial_number}</Td>
-                    <Td className="text-xs text-slate-500">{a.room_name}</Td>
+                    <Td className="text-xs text-slate-500">{a.serialNumber}</Td>
+                    <Td className="text-xs text-slate-500">{a.roomName}</Td>
                     <Td><Badge tone={statusTone(a.status)}>{statusLabel(a.status)}</Badge></Td>
                     <Td>{a.condition || '—'}</Td>
                     <Td><SecondaryButton size="sm" onClick={() => startEdit(a)}>Sửa</SecondaryButton></Td>

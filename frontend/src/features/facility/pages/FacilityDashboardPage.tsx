@@ -37,10 +37,10 @@ export const FacilityDashboardPage: React.FC = () => {
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Stat label="Phòng học" value={String(s.room_count)} icon={<FileText className="w-5 h-5" />} />
-        <Stat label="Tài sản" value={String(s.asset_count)} icon={<TrendingUp className="w-5 h-5" />} />
-        <Stat label="Tài sản cần sửa chữa" value={String(s.assets_needing_repair)} icon={<Wrench className="w-5 h-5" />} tone="text-red-600" />
-        <Stat label="Bảo trì đến hạn" value={String(s.maintenance_due_count)} icon={<Clock className="w-5 h-5" />} tone="text-amber-600" />
+        <Stat label="Phòng học" value={String(s.roomCount)} icon={<FileText className="w-5 h-5" />} />
+        <Stat label="Tài sản" value={String(s.assetCount)} icon={<TrendingUp className="w-5 h-5" />} />
+        <Stat label="Tài sản cần sửa chữa" value={String(s.assetsNeedingRepair)} icon={<Wrench className="w-5 h-5" />} tone="text-red-600" />
+        <Stat label="Bảo trì đến hạn" value={String(s.maintenanceDueCount)} icon={<Clock className="w-5 h-5" />} tone="text-amber-600" />
       </div>
 
       <Card>

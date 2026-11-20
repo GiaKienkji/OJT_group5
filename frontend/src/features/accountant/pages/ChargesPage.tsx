@@ -124,14 +124,14 @@ export const ChargesPage: React.FC = () => {
               <tbody>
                 {list.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50">
-                    <Td className="font-semibold text-slate-900">{c.student_name}</Td>
-                    <Td>{c.class_name}</Td>
-                    <Td>{c.fee_name}</Td>
-                    <Td className="text-xs text-slate-500">{c.campaign_name}</Td>
-                    <Td>{fmtMoney(c.amount_due)}</Td>
-                    <Td>{fmtMoney(c.amount_paid)}</Td>
+                    <Td className="font-semibold text-slate-900">{c.studentName}</Td>
+                    <Td>{c.className}</Td>
+                    <Td>{c.feeName}</Td>
+                    <Td className="text-xs text-slate-500">{c.campaignName}</Td>
+                    <Td>{fmtMoney(c.amountDue)}</Td>
+                    <Td>{fmtMoney(c.amountPaid)}</Td>
                     <Td className={`font-semibold ${c.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmtMoney(c.balance)}</Td>
-                    <Td>{fmtDate(c.due_date)}</Td>
+                    <Td>{fmtDate(c.dueDate)}</Td>
                     <Td>
                       <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>
                       {c.overdue && <span className="text-xs text-red-600 font-semibold ml-1">QH</span>}
@@ -149,9 +149,9 @@ export const ChargesPage: React.FC = () => {
         )}
       </Card>
 
-      <Modal title={`Miễn giảm: ${exemptCharge?.student_name ?? ''}`} onClose={() => setExemptOpen(false)} open={exemptOpen}>
+      <Modal title={`Miễn giảm: ${exemptCharge?.studentName ?? ''}`} onClose={() => setExemptOpen(false)} open={exemptOpen}>
         <form onSubmit={handleExemption} className="space-y-4">
-          <p className="text-sm text-slate-500">{exemptCharge?.fee_name} – còn nợ {fmtMoney(exemptCharge?.balance)}</p>
+          <p className="text-sm text-slate-500">{exemptCharge?.feeName} – còn nợ {fmtMoney(exemptCharge?.balance)}</p>
           <Field label="Số tiền miễn giảm" required>
             <Input type="number" value={exemptAmount} onChange={(e) => setExemptAmount(e.target.value)} required />
           </Field>

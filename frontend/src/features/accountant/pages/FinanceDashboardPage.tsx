@@ -56,8 +56,8 @@ export const FinanceDashboardPage: React.FC = () => {
   if (error) return <ErrorBox message={error} onRetry={load} />;
   if (!data) return <Empty />;
 
-  const indicator = (v: string): string => {
-    const n = parseFloat(v);
+  const indicator = (v: string | number | undefined): string => {
+    const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
     if (isNaN(n)) return '—';
     return fmtMoney(n);
   };
@@ -67,11 +67,11 @@ export const FinanceDashboardPage: React.FC = () => {
       <PageHeader title="Tổng quan Tài chính" subtitle="Tình hình thu chi và công nợ học sinh" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Stat label="Đã thu" value={indicator(data.dash.total_collected)} icon={<DollarSign className="w-5 h-5" />} tone="text-emerald-600" />
-        <Stat label="Công nợ phải thu" value={indicator(data.dash.outstanding_debt)} icon={<Wallet className="w-5 h-5" />} tone="text-red-600" />
-        <Stat label="Chiến dịch đang chạy" value={data.dash.active_campaigns ?? '—'} icon={<TrendingUp className="w-5 h-5" />} tone="text-[#0B4F8A]" />
-        <Stat label="Thanh toán hôm nay" value={data.dash.payments_today ?? '—'} icon={<CalendarCheck className="w-5 h-5" />} tone="text-amber-600" />
-        <Stat label="Giao dịch chưa đối soát" value={data.dash.unreconciled_transactions ?? '—'} icon={<RefreshCcw className="w-5 h-5" />} tone="text-purple-600" />
+        <Stat label="Đã thu" value={indicator(data.dash.totalCollected)} icon={<DollarSign className="w-5 h-5" />} tone="text-emerald-600" />
+        <Stat label="Công nợ phải thu" value={indicator(data.dash.outstandingDebt)} icon={<Wallet className="w-5 h-5" />} tone="text-red-600" />
+        <Stat label="Chiến dịch đang chạy" value={String(data.dash.activeCampaigns ?? '—')} icon={<TrendingUp className="w-5 h-5" />} tone="text-[#0B4F8A]" />
+        <Stat label="Thanh toán hôm nay" value={String(data.dash.paymentsToday ?? '—')} icon={<CalendarCheck className="w-5 h-5" />} tone="text-amber-600" />
+        <Stat label="Giao dịch chưa đối soát" value={String(data.dash.unreconciledTransactions ?? '—')} icon={<RefreshCcw className="w-5 h-5" />} tone="text-purple-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -95,11 +95,11 @@ export const FinanceDashboardPage: React.FC = () => {
                 <tbody>
                   {data.debts.slice(0, 6).map((d) => (
                     <tr key={d.id} className="hover:bg-slate-50">
-                      <Td className="font-semibold text-slate-900">{d.student_name}</Td>
-                      <Td>{d.fee_name}</Td>
-                      <Td>{fmtMoney(d.amount_due)}</Td>
+                      <Td className="font-semibold text-slate-900">{d.studentName}</Td>
+                      <Td>{d.feeName}</Td>
+                      <Td>{fmtMoney(d.amountDue)}</Td>
                       <Td className="text-red-600 font-semibold">{fmtMoney(d.balance)}</Td>
-                      <Td>{fmtDate(d.due_date)}</Td>
+                      <Td>{fmtDate(d.dueDate)}</Td>
                       <Td>
                         <Badge tone={statusTone(d.status)}>{statusLabel(d.status)}</Badge>
                       </Td>
@@ -130,10 +130,10 @@ export const FinanceDashboardPage: React.FC = () => {
                 <tbody>
                   {data.payments.slice(0, 6).map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50">
-                      <Td className="font-semibold text-slate-900">{p.student_name}</Td>
+                      <Td className="font-semibold text-slate-900">{p.studentName}</Td>
                       <Td>{fmtMoney(p.amount)}</Td>
                       <Td>{statusLabel(p.method)}</Td>
-                      <Td>{fmtDate(p.paid_at)}</Td>
+                      <Td>{fmtDate(p.paidAt)}</Td>
                       <Td>
                         <Badge tone={statusTone(p.status)}>{statusLabel(p.status)}</Badge>
                       </Td>

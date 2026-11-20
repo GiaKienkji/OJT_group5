@@ -185,10 +185,10 @@ export const MaintenancePage: React.FC = () => {
                   <tr key={m.id} className="hover:bg-slate-50">
                     <Td className="font-semibold text-slate-900">{m.id.slice(0, 8)}...</Td>
                     <Td>{m.title}</Td>
-                    <Td className="text-xs text-slate-600">{m.asset_id ? m.asset_id.slice(0, 8) + '...' : '—'}</Td>
-                    <Td>{m.maintenance_date ? fmtDate(m.maintenance_date) : '—'}</Td>
+                    <Td className="text-xs text-slate-600">{m.assetCode ? `${m.assetCode} - ${m.assetName}` : (m.assetId ? m.assetId.slice(0, 8) + '...' : '—')}</Td>
+                    <Td>{m.scheduledFor ? fmtDate(m.scheduledFor) : '—'}</Td>
                     <Td className="text-xs text-slate-500">
-                      {m.repeat_interval_months ? `${m.repeat_interval_months} tháng/lần` : 'Một lần'}
+                      {m.repeatIntervalMonths ? `${m.repeatIntervalMonths} tháng/lần` : 'Một lần'}
                     </Td>
                     <Td>
                       <Badge tone={statusTone(m.status)}>{statusLabel(m.status)}</Badge>
@@ -281,7 +281,7 @@ export const MaintenancePage: React.FC = () => {
             <Select value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)} required>
               <option value="">-- Chọn nhân sự CSVC --</option>
               {handlers.map((h) => (
-                <option key={h.user_id} value={h.user_id}>
+                <option key={h.id} value={h.id}>
                   {h.code} - {h.name}
                 </option>
               ))}

@@ -66,8 +66,8 @@ export const FinanceReportsPage: React.FC = () => {
         if (toDate) filters.toDate = toDate;
       }
 
-      const rows = await financeApi.getReports(filters);
-      setReportData(rows);
+      const res = await financeApi.getReports(filters);
+      setReportData(res.rows || []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Truy vấn báo cáo thất bại.');
     } finally {
@@ -151,7 +151,7 @@ export const FinanceReportsPage: React.FC = () => {
               <Field label="Năm học">
                 <Select value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)}>
                   <option value="">-- Tất cả năm học --</option>
-                  {lookups?.AcademicYears?.map((y) => (
+                  {lookups?.academicYears?.map((y) => (
                     <option key={y.id} value={y.id}>
                       {y.name}
                     </option>
@@ -162,7 +162,7 @@ export const FinanceReportsPage: React.FC = () => {
               <Field label="Học kỳ">
                 <Select value={semesterId} onChange={(e) => setSemesterId(e.target.value)}>
                   <option value="">-- Tất cả học kỳ --</option>
-                  {lookups?.Semesters?.map((s) => (
+                  {lookups?.semesters?.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
@@ -175,7 +175,7 @@ export const FinanceReportsPage: React.FC = () => {
               <Field label="Lớp học">
                 <Select value={classId} onChange={(e) => setClassId(e.target.value)}>
                   <option value="">-- Tất cả các lớp --</option>
-                  {lookups?.Classes?.map((c) => (
+                  {lookups?.classes?.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

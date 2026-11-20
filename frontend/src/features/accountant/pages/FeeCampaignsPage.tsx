@@ -64,8 +64,8 @@ export const FeeCampaignsPage: React.FC = () => {
       ]);
       setList(campaigns);
       setLookups({
-        academicYears: lookups.AcademicYears,
-        classes: lookups.Classes,
+        academicYears: lookups.academicYears,
+        classes: lookups.classes,
       });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Không tải chiến dịch');
@@ -119,11 +119,11 @@ export const FeeCampaignsPage: React.FC = () => {
     try {
       const rs = await financeApi.getCampaignRules(campaign.id);
       setRuleRows(rs.map(r => ({
-        feeCategoryId: r.fee_category_id,
-        gradeLevelId: r.grade_level_id ?? '',
-        classId: r.class_id ?? '',
+        feeCategoryId: r.feeCategoryId,
+        gradeLevelId: r.gradeLevelId ?? '',
+        classId: r.classId ?? '',
         amount: String(r.amount),
-        dueDate: r.due_date ? String(r.due_date).slice(0, 10) : '',
+        dueDate: r.dueDate ? String(r.dueDate).slice(0, 10) : '',
       })));
       setRuleOpen(true);
     } catch (e: unknown) {
@@ -216,8 +216,8 @@ export const FeeCampaignsPage: React.FC = () => {
                   {list.map((c) => (
                     <tr key={c.id} className="hover:bg-slate-50">
                       <Td className="font-semibold text-slate-900">{c.name}</Td>
-                      <Td>{c.academic_year_name ?? '—'}</Td>
-                      <Td>{fmtDate(c.due_on)}</Td>
+                      <Td>{c.academicYearName ?? '—'}</Td>
+                      <Td>{fmtDate(c.dueOn)}</Td>
                       <Td>
                         <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>
                       </Td>

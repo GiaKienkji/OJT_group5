@@ -119,10 +119,10 @@ export const NoticesPage: React.FC = () => {
                   <tr key={n.id} className="hover:bg-slate-50">
                     <Td className="font-semibold text-slate-900">{n.title}</Td>
                     <Td className="max-w-md truncate">{n.message}</Td>
-                    <Td>{fmtDateTime(n.created_at)}</Td>
-                    <Td><Badge tone={n.sent_at ? 'green' : 'amber'}>{n.sent_at ? 'Đã gửi' : 'Nháp'}</Badge></Td>
+                    <Td>{fmtDateTime(n.createdAt)}</Td>
+                    <Td><Badge tone={n.sentAt ? 'green' : 'amber'}>{n.sentAt ? 'Đã gửi' : 'Nháp'}</Badge></Td>
                     <Td>
-                      {!n.sent_at && canManage && (
+                      {!n.sentAt && canManage && (
                         <SecondaryButton size="sm" onClick={() => handleSend(n)}><span role="img" aria-label="Gửi">📤</span> Gửi</SecondaryButton>
                       )}
                     </Td>

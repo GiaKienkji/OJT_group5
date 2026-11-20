@@ -138,10 +138,10 @@ export const PaymentsPage: React.FC = () => {
               <tbody>
                 {list.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50">
-                    <Td className="font-semibold text-slate-900">{p.student_name}</Td>
+                    <Td className="font-semibold text-slate-900">{p.studentName}</Td>
                     <Td>{fmtMoney(p.amount)}</Td>
                     <Td>{statusLabel(p.method)}</Td>
-                    <Td>{fmtDate(p.paid_at)}</Td>
+                    <Td>{fmtDate(p.paidAt)}</Td>
                     <Td><Badge tone={statusTone(p.status)}>{statusLabel(p.status)}</Badge></Td>
                     <Td className="flex gap-2">
                       {p.status === 'pending' && canReconcile && (
@@ -191,7 +191,7 @@ export const PaymentsPage: React.FC = () => {
         </form>
       </Modal>
 
-      <Modal title={`Xác nhận: ${verifyPayment?.student_name ?? ''}`} onClose={() => setVerifyOpen(false)} open={verifyOpen}>
+      <Modal title={`Xác nhận: ${verifyPayment?.studentName ?? ''}`} onClose={() => setVerifyOpen(false)} open={verifyOpen}>
         <form onSubmit={(e) => { e.preventDefault(); handleVerify(); }} className="space-y-4">
           <p className="text-sm text-slate-500">{fmtMoney(verifyPayment?.amount ?? 0)} – {statusLabel(verifyPayment?.status ?? '')}</p>
           <Field label="Quyết định">

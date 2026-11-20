@@ -163,14 +163,14 @@ export const ProposalsPage: React.FC = () => {
                     </Td>
                     <Td>{p.quantity}</Td>
                     <Td className="font-semibold text-slate-900">
-                      {p.estimated_cost ? fmtMoney(p.estimated_cost) : '—'}
+                      {p.estimatedCost ? fmtMoney(p.estimatedCost) : '—'}
                     </Td>
                     <Td>
                       <Badge tone={statusTone(p.status)}>{statusLabel(p.status)}</Badge>
                     </Td>
                     <Td>
                       <div className="flex items-center gap-1.5">
-                        {canApprove && p.status === 'pending' && (
+                        {canApprove && (p.status === 'submitted' || p.status === 'in_review' || p.status === 'pending') && (
                           <SecondaryButton
                             size="sm"
                             onClick={() => {

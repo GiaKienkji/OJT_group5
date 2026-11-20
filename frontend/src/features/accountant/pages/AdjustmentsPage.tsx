@@ -135,7 +135,7 @@ export const AdjustmentsPage: React.FC = () => {
               <tbody>
                 {list.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-50">
-                    <Td className="font-semibold text-slate-900">{a.payment_id}</Td>
+                    <Td className="font-semibold text-slate-900">{a.paymentId}</Td>
                     <Td>{statusLabel(a.type)}</Td>
                     <Td>{fmtMoney(a.amount)}</Td>
                     <Td>{a.reason}</Td>

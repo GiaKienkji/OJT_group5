@@ -39,7 +39,7 @@ export const FeeCategoriesPage: React.FC = () => {
   const toggleActive = async (cat: FeeCategory) => {
     if (!canManage) return;
     try {
-      await financeApi.updateFeeCategory(cat.id, { code: cat.code, name: cat.name, is_active: !cat.is_active });
+      await financeApi.updateFeeCategory(cat.id, { code: cat.code, name: cat.name, isActive: !cat.isActive });
       await load();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Không cập nhật trạng thái');
@@ -50,9 +50,9 @@ export const FeeCategoriesPage: React.FC = () => {
     e.preventDefault();
     try {
       if (editing) {
-        await financeApi.updateFeeCategory(editing.id, { code, name, is_active: active });
+        await financeApi.updateFeeCategory(editing.id, { code, name, isActive: active });
       } else {
-        await financeApi.createFeeCategory({ code, name, is_active: active });
+        await financeApi.createFeeCategory({ code, name, isActive: active });
       }
       setOpen(false); setCode(''); setName(''); setActive(true); setEditing(null);
       await load();
@@ -91,17 +91,17 @@ export const FeeCategoriesPage: React.FC = () => {
                     <Td className="font-semibold text-slate-900">{c.code}</Td>
                     <Td>{c.name}</Td>
                     <Td>
-                      <Badge tone={statusTone(c.is_active ? 'active' : 'closed')}>
-                        {c.is_active ? 'Hoạt động' : 'Khóa'}
+                      <Badge tone={statusTone(c.isActive ? 'active' : 'closed')}>
+                        {c.isActive ? 'Hoạt động' : 'Khóa'}
                       </Badge>
                     </Td>
                     <Td>
                       {canManage && (
                         <button
                           onClick={() => toggleActive(c)}
-                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${c.is_active ? 'text-emerald-700 hover:bg-emerald-50' : 'text-red-600 hover:bg-red-50'}`}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${c.isActive ? 'text-emerald-700 hover:bg-emerald-50' : 'text-red-600 hover:bg-red-50'}`}
                         >
-                          {c.is_active ? 'Khóa' : 'Kích hoạt'}
+                          {c.isActive ? 'Khóa' : 'Kích hoạt'}
                         </button>
                       )}
                     </Td>

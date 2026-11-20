@@ -89,7 +89,7 @@ export const ExemptionsPage: React.FC = () => {
                     <Td className="font-semibold text-slate-900">{e.id}</Td>
                     <Td>{fmtMoney(e.amount)}</Td>
                     <Td>{e.reason}</Td>
-                    <Td>{fmtDate(e.created_at)}</Td>
+                    <Td>{fmtDate(e.createdAt)}</Td>
                     <Td><Badge tone={statusTone(e.status)}>{statusLabel(e.status)}</Badge></Td>
                     <Td>
                       {e.status === 'submitted' && canApprove && (

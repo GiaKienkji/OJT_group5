@@ -288,17 +288,17 @@ export const IncidentsAndRepairsPage: React.FC = () => {
                   {incidents.map((inc) => (
                     <tr key={inc.id} className="hover:bg-slate-50">
                       <Td className="font-semibold text-slate-900">
-                        {inc.asset_code} - {inc.asset_name}
+                        {inc.assetCode} - {inc.assetName}
                       </Td>
                       <Td>{inc.description}</Td>
-                      <Td className="text-xs text-slate-600">{inc.reported_by_name || '—'}</Td>
+                      <Td className="text-xs text-slate-600">{inc.reporterName || '—'}</Td>
                       <Td>
                         <Badge tone={statusTone(inc.priority)}>{statusLabel(inc.priority)}</Badge>
                       </Td>
                       <Td>
                         <Badge tone={statusTone(inc.status)}>{statusLabel(inc.status)}</Badge>
                       </Td>
-                      <Td className="text-xs text-slate-500">{fmtDateTime(inc.created_at)}</Td>
+                      <Td className="text-xs text-slate-500">{fmtDateTime(inc.reportedAt)}</Td>
                       <Td>
                         <div className="flex items-center gap-1.5">
                           {canManageRepairs && (
@@ -359,16 +359,16 @@ export const IncidentsAndRepairsPage: React.FC = () => {
                     <tr key={r.id} className="hover:bg-slate-50">
                       <Td className="font-semibold text-slate-900">{r.title}</Td>
                       <Td className="text-xs text-slate-600">
-                        {r.asset_code} - {r.asset_name}
+                        {r.assetCode} - {r.assetName}
                       </Td>
-                      <Td>{r.scheduled_for ? fmtDateTime(r.scheduled_for) : '—'}</Td>
+                      <Td>{r.scheduledFor ? fmtDateTime(r.scheduledFor) : '—'}</Td>
                       <Td>
                         <Badge tone={statusTone(r.status)}>{statusLabel(r.status)}</Badge>
                       </Td>
                       <Td className="text-xs text-slate-600">
-                        {r.result_condition || r.result_status ? (
+                        {r.resultCondition || r.resultStatus ? (
                           <span>
-                            {r.result_condition} ({statusLabel(r.result_status || '')})
+                            {r.resultCondition} ({statusLabel(r.resultStatus || '')})
                           </span>
                         ) : (
                           'Chưa ghi nhận'
@@ -520,7 +520,7 @@ export const IncidentsAndRepairsPage: React.FC = () => {
             <Select value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)} required>
               <option value="">-- Chọn nhân sự CSVC --</option>
               {handlers.map((h) => (
-                <option key={h.user_id} value={h.user_id}>
+                <option key={h.id} value={h.id}>
                   {h.code} - {h.name}
                 </option>
               ))}
