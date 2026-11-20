@@ -7,6 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SOMS.Application.Common.Interfaces;
 using SOMS.Application.Modules.StudentPortal.Interfaces;
+using SOMS.Application.Modules.Facility.Interfaces;
+using SOMS.Application.Modules.Finance.Interfaces;
+using SOMS.Infrastructure.Services.Facility;
+using SOMS.Infrastructure.Services.Finance;
 using SOMS.Infrastructure.Authorization;
 using SOMS.Infrastructure.Data;
 using SOMS.Infrastructure.Services;
@@ -43,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IStudentPortalService, StudentPortalService>();
+        services.AddScoped<Tv4Store>();
+        services.AddScoped<IFinanceService, FinanceService>();
+        services.AddScoped<IFacilityService, FacilityService>();
 
         // Register Permission Authorization Handler
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();

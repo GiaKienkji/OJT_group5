@@ -2,6 +2,8 @@ import React from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
+import { AccountantRoutes } from './features/accountant/routes/accountantRoutes';
+import { FacilityRoutes } from './features/facility/routes/facilityRoutes';
 import { StudentRoutes } from './features/student/routes/studentRoutes';
 import { 
   Users, 
@@ -10,7 +12,6 @@ import {
   CheckCircle, 
   Calendar, 
   DollarSign, 
-  Wrench, 
   GraduationCap, 
   Award,
   BookOpen,
@@ -209,23 +210,7 @@ export const App: React.FC = () => {
           title="Bảng quản lý Thu chi &amp; Học phí"
           description="Quản lý danh mục học phí, chiến dịch thu, ghi nhận thanh toán và đối soát giao dịch."
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <DollarSign className="w-6 h-6 text-rose-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Đợt thu Học phí</h3>
-              <p className="text-sm text-slate-500">Tạo đợt thu, mức thu theo khối lớp và áp dụng chính sách miễn giảm.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <CheckCircle className="w-6 h-6 text-emerald-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Đối soát Thanh toán</h3>
-              <p className="text-sm text-slate-500">Khớp giao dịch ngân hàng, tạo biên lai và theo dõi công nợ học sinh.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <FileText className="w-6 h-6 text-blue-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Báo cáo Tài chính</h3>
-              <p className="text-sm text-slate-500">Tổng hợp thu theo tháng, học kỳ và tình trạng hoàn thành nghĩa vụ phí.</p>
-            </div>
-          </div>
+          <AccountantRoutes />
         </DashboardLayout>
       );
 
@@ -237,18 +222,7 @@ export const App: React.FC = () => {
           title="Quản lý Cơ sở vật chất &amp; Thiết bị"
           description="Quản lý phòng học, mượn trả thiết bị, tiếp nhận sự cố và lập lịch bảo trì định kỳ."
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <Wrench className="w-6 h-6 text-orange-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Sự cố &amp; Sửa chữa</h3>
-              <p className="text-sm text-slate-500">Tiếp nhận báo hỏng thiết bị từ giáo viên, cập nhật tiến độ khắc phục.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <FileText className="w-6 h-6 text-blue-600 mb-3" />
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Danh mục Tài sản</h3>
-              <p className="text-sm text-slate-500">Theo dõi số lượng, tình trạng sử dụng và phân bổ tài sản tại các phòng học.</p>
-            </div>
-          </div>
+          <FacilityRoutes />
         </DashboardLayout>
       );
 

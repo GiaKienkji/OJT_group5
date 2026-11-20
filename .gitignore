@@ -13,8 +13,18 @@ obj/
 .env
 .env.*
 !.env.example
+# Word documents
+*.docx
 secrets.json
 appsettings.*.local.json
+
+# Local agent & tool configs
+.agents/
+.claude/
+.omp/
+.zcode/
+skills-lock.json
+$env
 
 # Build outputs
 [Dd]ebug/

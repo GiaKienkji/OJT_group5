@@ -41,7 +41,10 @@ if (builder.Environment.IsDevelopment())
 }
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new SOMS.Api.Controllers.Tv4RowJsonConverter()));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<SOMS.Application.Common.Models.ITv4Identity, SOMS.Api.Controllers.HttpTv4Identity>();
 builder.Services.AddEndpointsApiExplorer();
 
 // Configure CORS for Vite React frontend
@@ -49,7 +52,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "https://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "https://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

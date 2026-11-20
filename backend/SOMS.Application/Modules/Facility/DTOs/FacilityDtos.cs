@@ -1,0 +1,21 @@
+namespace SOMS.Application.Modules.Facility.DTOs;
+
+public sealed record RoomInput(string Code, string? Name, string RoomType, int Capacity, string Status = "available");
+public sealed record AssetCategoryInput(string Name, bool IsActive = true);
+public sealed record AssetInput(string Code, string Name, string Category, string? SerialNumber, Guid? RoomId, string Status = "working", string? Condition = null, string? Notes = null);
+public sealed record AssetAssignInput(Guid AssetId, Guid? RoomId, string? Note);
+public sealed record AssetConditionInput(string Condition, string Status, string? Note);
+public sealed record AssetQuery(Guid? RoomId = null, string? Category = null, string? Status = null);
+public sealed record InventoryObservationInput(Guid AssetId, Guid? ObservedRoomId, string Condition, string Status, bool Present);
+public sealed record InventoryInput(string Title, List<InventoryObservationInput> Observations);
+public sealed record BorrowInput(Guid AssetId, string Purpose, DateTimeOffset? DueAt);
+public sealed record HandoverInput(string? Note);
+public sealed record IncidentInput(Guid AssetId, string Description, string Severity);
+public sealed record SeverityInput(string Severity);
+public sealed record RepairInput(Guid IncidentId, string Title, DateOnly? ScheduledFor);
+public sealed record HandlerInput(Guid StaffId, string? Note);
+public sealed record ProgressInput(string ProgressNote);
+public sealed record WorkResultInput(string Result, decimal Cost, string Condition, string Status);
+public sealed record MaintenanceInput(Guid AssetId, string Title, DateOnly MaintenanceDate, int? RepeatIntervalMonths);
+public sealed record ProposalInput(string Type, string Title, string Description, int Quantity, decimal? EstimatedCost, Guid? AssetId);
+public sealed record FacilityExportInput(string ReportType, string Format, Guid? RoomId, string? Category, DateOnly? FromDate, DateOnly? ToDate);

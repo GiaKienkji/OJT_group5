@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.5.3" />
@@ -26,6 +27,10 @@
     <ProjectReference Include="..\SOMS.Api\SOMS.Api.csproj" />
     <ProjectReference Include="..\SOMS.Application\SOMS.Application.csproj" />
     <ProjectReference Include="..\SOMS.Infrastructure\SOMS.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Fixtures\tv4_shared_schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SOMS.Infrastructure\Data\Migrations\20261118_tv4_operations.sql" Link="Fixtures\20261118_tv4_operations.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

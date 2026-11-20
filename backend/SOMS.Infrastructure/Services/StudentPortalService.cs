@@ -1755,7 +1755,7 @@ public class StudentPortalService : IStudentPortalService
         };
     }
 
-    public async Task<List<AnnouncementItemDto>> GetAnnouncementsAsync(Guid userId, CancellationToken ct = default)
+    public Task<List<AnnouncementItemDto>> GetAnnouncementsAsync(Guid userId, CancellationToken ct = default)
     {
         var list = new List<AnnouncementItemDto>
         {
@@ -2035,7 +2035,7 @@ public class StudentPortalService : IStudentPortalService
             index++;
         }
 
-        return list;
+        return Task.FromResult(list);
     }
 
     public Task<bool> MarkAnnouncementAsReadAsync(Guid userId, Guid announcementId, CancellationToken ct = default)

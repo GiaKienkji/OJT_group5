@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -24,7 +25,21 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task GetDatabaseHealth_DefaultConfiguration_Returns503WithSafeJson()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        // Force placeholder configuration so the result never depends on a developer-local .env
+        // file or on a real database being reachable.
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.UseContentRoot(Path.GetTempPath());
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:DefaultConnection"] =
+                        "Host=YOUR_SUPABASE_HOST;Port=5432;Database=postgres;Username=YOUR_DATABASE_USER;SSL Mode=Require;"
+                });
+            });
+        }).CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/dev/database-health");
@@ -56,6 +71,8 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 
         var client = _factory.WithWebHostBuilder(builder =>
         {
+            builder.UseEnvironment("Development");
+            builder.UseContentRoot(Path.GetTempPath());
             builder.ConfigureTestServices(services =>
             {
                 services.AddScoped(_ => mockHealthService.Object);
